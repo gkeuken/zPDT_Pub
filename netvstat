@@ -1,0 +1,155 @@
+#!/usr/bin/env python 
+
+import subprocess 
+import sys
+from subprocess import PIPE, CalledProcessError
+
+parlist = []
+tasklist = []
+savlist = []
+tasklist.append([])
+savlist.append([])
+tasklist[0].append('MVS')
+savlist[0].append('MVS')
+lvl = 0
+blanks = ""
+tcnt = 0
+
+
+# Check all tasks for parents in the parlist to be removed 
+def removepar():
+    global tasklist, parlist
+    for word in parlist:
+        for z in range(len(tasklist)):
+            try:
+                tasklist[z].remove(word)
+            except ValueError as err:
+                pass
+            #finally:
+            #    print("Debug: ",tasklist[x])
+    parlist.clear()
+
+
+# Check tasklist for those no longer or not having a dependent task and if so print/remove it from list
+def checkone_task():
+    global lvl, blanks, taskstat
+    taskstat = ''
+    lvl+=1
+    tlen = len(tasklist)
+    x = 0
+    while x < tlen:
+        #print("Debug ",x,tasklist[x],len(tasklist[x]))
+        if len(tasklist[x]) == 1:
+            if taskflag != 'nostat':
+                try:
+                    taskstat = statlist[tasklist[x][0].encode()]
+                except KeyError as kerr:                    
+                    taskstat = b' '    
+            else:
+                taskstat = b' '
+            prtcol = '\033[00m'
+            if taskstat.decode() == 'UP':
+                prtcol = '\033[00m'         #Green
+            if taskstat.decode() == 'DOWN':
+                prtcol = '\033[31m'         #Red
+            if taskstat.decode() == 'NOSTART':
+                prtcol = '\033[34m'         #Blue
+            if taskstat.decode() == 'STOPPING':
+                prtcol = '\033[33m'         #Yellow 
+            rstcol = '\033[00m'             #Green
+            whtcol = '\033[37m'             #White
+            blucol = '\033[34m'
+            savpars = []
+            for sl in range(len(savlist)):
+                if tasklist[x][0] == savlist[sl][0]:
+                    for pl in range(len(savlist[sl])):
+                        if pl != 0:
+                            savpars.append(savlist[sl][pl])
+            print(blucol + blanks,lvl, whtcol + tasklist[x][0] + " ==> " + prtcol+ taskstat.decode() +blucol +"    Dependents =>", savpars, rstcol+" ")
+            parlist.append(tasklist[x][0])
+            del tasklist[x]
+            x-=1
+            tlen = len(tasklist)
+        x+=1
+    blanks+="  "
+
+
+# Get current status of all Tasks
+
+def gettask_stat():
+    global statlist, taskflag
+    taskflag = ''
+    statlist = {}
+    cmd = "%netv getstat all -w 2"
+    #cmd2 = '-w 3'
+    
+    try:
+        taskstat = subprocess.run(["zdtmsg", cmd],stdout=PIPE,check=True) 
+        if len(taskstat.stdout) < 150:
+            print("Warning: Unable to obtain current task Status")
+            taskflag = 'nostat'
+        else:    
+            for line in taskstat.stdout.splitlines():
+                if b"STATUS" in line:
+                    taskstat = line.split()[8]
+                    taskname = line.split()[5]
+                    statlist[taskname] = taskstat
+    except subprocess.CalledProcessError as err:
+        print(err)
+        print("Unable to obtain current task status")
+        print("Utility will continue but task status will not be available")
+        taskflag = 'nostat'
+
+
+def getnetv_globals():
+    try:
+        subprocess.run(["pdsUtil", "D3SYS1", "NETVIEW.V621USER.CNM01.CNMCLST/GLBCNM01", "--extract"],stdout=PIPE,check=True)
+    except subprocess.CalledProcessError as err:
+        print(err)
+        print("Unable to obtain Netview Globals configuration file, not able to continue")
+        print("Verify you are currently in the directory where the zPDT volumes reside. (eg. /home/ibmsys1/zdt/volumes/")
+        sys.exit()
+
+
+# Main Process
+
+#Get Netview Globals
+getnetv_globals()
+tlist = open('GLBCNM01.txt', "r")
+for line in tlist:
+    if "TASK.X ' = " in line:
+        taskname = (line.split()[4].strip('\"\''))
+        if taskname != 'MVS':
+            tasklist.append([])
+            savlist.append([])
+            tcnt+=1
+            tasklist[tcnt].append(taskname)
+            savlist[tcnt].append(taskname)
+    if "PARN.X ' = " in line and taskname != 'MVS':
+        parent = line.split()[4].strip('\"\'').replace(',', ' ')
+        for words in parent.split():
+            tasklist[tcnt].append(words)
+            savlist[tcnt].append(words)
+tlist.close()
+xlen = len(tasklist) 
+
+
+#Get All Tasks Status
+gettask_stat()
+
+subprocess.run(["clear"],stdout=None)
+print("\033[37m*******************************************")
+print("\033[37mz/OS - Netview Task Tree and Status Display")
+print("\033[37m*******************************************")
+
+while xlen > 0:  
+    # Check for tasks not having any dependents
+    checkone_task()
+    
+    # Remove dependents once we've displayed them
+    removepar()
+    
+    # reset length of tasklist
+    xlen = len(tasklist)   
+
+print("End")

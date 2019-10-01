@@ -1,0 +1,231 @@
+#!/usr/bin/env python
+#
+# This scripts can be used to "zap" a linux volume file used by zPDT to a larger size
+# In summary this script does the following:
+# 1) Creates a new volume file at new (larger) requested size
+# 2) Copies original disk file into new larger file
+# 3) Updates the new larger file appropriately with correct sizing
+# 4) If the original volume is in use by zPDT then attempts to vary it offline to z/OS via OPRMSG, and runs awsmount -u to unmount it
+# 5) Renames original volume file with _bkup suffix
+# 6) Renames new volume file to name of original file  
+# 7) Remounts the volume to zPDT and attempts to vary it online to z/OS
+# 8) Will submit JCL to z/OS to execute ICKDSF REFVTOC on the volume (if z/OS is up and -j option specified) 
+# 
+#
+#
+# For the purposes of this script I am using the following values
+# Mod 1 is  59040000  (1113 Cylinders)
+# Mod 3 is  0b0d0000  (3339 Cylinders)
+# Mod 9 is  21270000  (10017 Cylinders)
+# Mod 27 is 63750000  (30051 Cylinders)
+# Mod 54 is c6ea0000  (60102 Cylinders)
+# 
+# 
+# File sizes in bytes are: 
+# Mod 1    948810752 
+# Mod 3   2846431232
+# Mod 9   8539292672 
+# Mod 27  25617876992 
+# Mod 54  51235753472
+# 
+# 
+# All Mod sizes are an exact multiple of 1113 cylinders in keeping with recommended settings 
+# for Real z Hardware based Storage Subsystem.
+#
+# for help on required input run without any arguments or --help
+
+import zdtPyApi 
+from zdtPyApi import *
+
+# Read Arguments
+readArgs()
+
+print(" ")
+prRed("***** WARNING - READ CAREFULLY *****")
+print(" ")
+prRed("Use this utility at your own Risk! This utility performs the following actions:")
+prRed("- Rename (Backup) original Disk file (with suffix _bkup")
+prRed("- Create a NEW volume file at the requested enlarged size")
+prRed("- Prepend original volume data to new volume")
+prRed("In order to resize a volume, the volume MUST be taken OFFLINE from z/OS. This utility will")
+prRed("attempt to do this. During execution you will requested to verify that device comes offline")
+print(" ")
+
+if hasattr(__builtins__, 'raw_input'):
+    input=raw_input  # @UndefinedVariable
+verify = input("\033[96m Press Y to Accept the Risk and continue, or anything else to abort\033[00m ").upper()
+print(" ")
+if verify != 'Y':
+    prCyan('Aborting at your request')
+    sys.exit()
+else:
+
+    #Lets find out who is logged on and executing this
+    getLoggedUser()
+
+    modType = zdtPyApi.newSize
+    voldir = zdtPyApi.volDir
+    inVol = zdtPyApi.inVol
+    if zdtPyApi.volSer != '':
+            zosVol = zdtPyApi.volSer
+    else:
+            zosVol = inVol
+    ofile = str(voldir+inVol+"_V2")
+        
+    getSizes(modType)
+
+    try:
+            fstat = os.stat(voldir+inVol)
+            fsize = fstat.st_size
+            if fsize >= zdtPyApi.compSize:
+                    prRed("Original File is same size or larger than requested update size. Exiting")
+                    raise ValueError("Invalid new Size specified: "+modType)
+    except ValueError as fsze:
+        print(fsze)
+        sys.exit()
+
+    # Check if zPDT Emulator is running
+    checkZpdt()
+    
+    if zdtPyApi.zdtRDR != 'y' and zdtPyApi.sshSub != 'y':      # and zdtPyApi.rdrDir == '':
+        prRed("**Warning: AWSRDR Device is not defined. Automatic Submission of ICKDSF REFVTOC is not possible")
+        prRed("           This is required to resize a volume. You must take manual steps to perform this function if you continue")
+        if hasattr(__builtins__, 'raw_input'):
+            input=raw_input  # @UndefinedVariable
+
+        cont = input("Enter Y to continue anyway, anything else to abort")
+        if cont != 'y':
+            sys.exit()
+    zdtStat = zdtPyApi.zdtStat
+    
+    # Obtain Devmap Info
+    if zdtStat == 'up':
+        findDmInfo(zdtPyApi.loggedUser, zdtPyApi.zdtConf)
+    
+        if zdtPyApi.sshSub != 'y':
+            if not os.path.exists(zdtPyApi.devRdrDir):
+                prRed("WARNING: "+zdtPyApi.devRdrDir+" does not exist")
+                prRed("        ICKDSF REFVTOC MUST be run manually")
+                zdtPyApi.zdtRDR = 'n'
+
+        
+    if zdtPyApi.zosStat == 'down' or zdtPyApi.zdtStat == 'down':
+        prRed("z/OS Status: "+zdtPyApi.zosStat+"      zPDT Status: "+zdtPyApi.zdtStat)
+    else:
+        prCyan("z/OS Status: "+zdtPyApi.zosStat+"      zPDT Status: "+zdtPyApi.zdtStat)
+    print(" ")
+    
+    if ( zdtStat == 'down' or zdtPyApi.zosStat == 'down' ) and zdtPyApi.autoMnt == 'y':
+        prCyan("Warning. zPDT Emulator and/or z/OS was found to be DOWN")
+        prCyan("Automatic ICKDSF REFVTOC JCL Submission is not possible. Utility will proceed, but manual actions will be required")
+        print(" ")
+    
+    # If emulator is running then unmount disk file from device and vary offline from z/OS
+    devno = ''
+    if zdtStat == 'up':
+        devnum = subprocess.check_output("awsstat | grep "+inVol+" | awk '{print $1}'", shell=True)
+        devno = devnum.rstrip(b'\n')
+        devnon = str("V "+devno.decode()+",ONLINE")
+        devnoff = str("V "+devno.decode()+",OFFLINE")
+        dmatrx = str("D M=DEV("+devno.decode()+")")
+        devStatus = 'ONLINE'
+        if devno == b'' and zdtPyApi.autoMnt == 'y':
+            prCyan("Device not online to zPDT. Thus there is no need to try to unmount it") 
+            print(" ")
+            zdtPyApi.autoMnt = 'm'
+        if devno != b'' and devno != b' ':
+            prCyan("Device "+devno.decode()+" found mounted with File "+voldir+inVol)
+            if zdtPyApi.autoMnt == 'n':
+                prRed("ERROR: Manual processing option -m was specified or implied, however, device found mounted")
+                prRed("Either run without -m, or ensure device is not mounted to zPDT. Processing aborted")
+                sys.exit()
+            print(" ")
+            if zdtPyApi.zosStat == 'up':
+                prRed("Attempting to vary Device "+devno.decode()+" offline from z/OS.. you must review below messages to ensure correct status")
+                sendOprMsg(devnoff, zdtPyApi.curLogFile, 4, 'y')
+                devMatrix = sendOprMsg(dmatrx, zdtPyApi.curLogFile, zdtPyApi.slpTime, 't')
+                for words in devMatrix.splitlines():
+                    if "STATUS=OFFLINE" in words:
+                        print("Device appears to be successfully OFFLINE")
+                        devStatus = 'OFFLINE'
+            print(" ")
+            if hasattr(__builtins__, 'raw_input'):
+                input=raw_input  # @UndefinedVariable
+            if devStatus == 'OFFLINE':    
+                verf = input("Review messages above to verify volume is OFFLINE to z/OS (NOT pending), Reply Y to continue or anything else to abort ")
+            else:
+                prRed("ERROR: Device is NOT Offline. Volume Resize will terminate")
+                verf = 'n'
+            if verf != 'y':
+                sendOprMsg(devnon, zdtPyApi.curLogFile, zdtPyApi.slpTime, 'n')
+                print("Use Below messages to assist in determining what might be currently allocated to device: "+devno.decode())
+                devUsers = str("D U,,ALLOC,"+devno.decode()+",1")
+                sendOprMsg(devUsers, zdtPyApi.curLogFile, zdtPyApi.slpTime, 'y')
+                sys.exit()
+            subprocess.call(["awsmount", devno, "-u"])
+            time.sleep(2)
+            try:
+                chkUmnt = subprocess.check_output(["awsmount", devno, "-q"])
+            except subprocess.CalledProcessError as ckm:
+                if ckm.output.find(b"No file mounted") == -1:
+                    sendOprMsg(devnon, zdtPyApi.curLogFile, zdtPyApi.slpTime, 'n')
+                    prRed("File appears to be still mounted, cannot continue")
+                    sys.exit()
+    print(" ")
+    
+    # Create new Disk File, copy in old disk file, and renames
+    try:
+        subprocess.call(["alcckd", "-d", "3390-"+modType, ofile])
+        subprocess.call(["dd", "if="+voldir+inVol, "of="+ofile, "bs=16M", "conv=notrunc", "status=progress"])
+        resizeVol(zdtPyApi.newHxSize, ofile)
+        inVol_bkup = voldir+inVol+'_bkup'
+        subprocess.call(["mv", voldir+inVol, inVol_bkup])
+        subprocess.call(["mv", ofile, voldir+inVol])
+    except:
+        print("Error creating new disk file, creating backup and/or renaming original Disk file")
+        sys.exit()
+
+    #if zdtStat == 'up' and devno != b'' and zdtPyApi.autoMnt == 'y':
+    if devno != b'' and zdtPyApi.autoMnt == 'y':
+        subprocess.call(["awsmount", devno, "-m", voldir+inVol])
+        if zdtPyApi.zosStat == 'up':
+                        
+            # Bring device back online to z/OS so we can run REFVTOC
+            sendOprMsg(devnon, zdtPyApi.curLogFile, zdtPyApi.slpTime, 'y')
+            
+    if zdtStat == 'up':
+        if (zdtPyApi.zdtRDR == 'y' or zdtPyApi.devRdrDir != '' or zdtPyApi.sshSub == 'y') and zdtPyApi.autoMnt == 'y':
+            if zdtPyApi.sshSub != 'y':
+                prCyan("Submitting ICKDSF REFVTOC JCL to z/OS via awsrdr: "+zdtPyApi.devRdrDir+" for volume: "+zosVol+" Password must be provided if prompted")
+            else:
+                prCyan("Submitting ICKDSF REVTOC JCL to z/OS via SSH")
+                
+            #submit ICKDSF job and obtain output 
+            subIckdsfJcl(zosVol,zdtPyApi.zosStat)
+        
+            if zdtPyApi.zosStat == 'up':
+                #Verify ICKDSF output 
+                if zdtPyApi.zdtPRT == 'y' or zdtPyApi.sshSub == 'y': 
+                    checkIckOut(zosVol)
+
+    else:
+        prRed("**Warning: Manual Action required.. you must submit ICKDSF REFVTOC for updated Volume")
+
+    if zdtStat == 'up' and devno == b'':
+        prCyan("Warning: Linux Disk File "+voldir+inVol+" was origingally not mounted, and therefore will remain unmounted.")
+
+        if zdtPyApi.autoMnt == 'y':
+            prCyan("Automatic ICKDSF REFVTOC JCL Submission will be ignored. Manual action required") 
+    
+    prCyan("******************************************************************************************")
+    prCyan("Successful Creation of Larger Volume: "+voldir+inVol+" as 3390 Mod: "+modType)
+    prCyan("           Backup of original volume was created as: "+inVol_bkup)
+    if zdtPyApi.autoMnt == 'y' and devno != b'' and zdtPyApi.zosStat == 'up' and zdtPyApi.zdtRDR == 'y':
+        if zdtPyApi.zdtPRT == 'n':
+            prRed("Cannot verify ICKDSF output automatically. Devmap stanza awsprt not configured, or error obtaining output")
+        else:
+            prCyan("Take any manual actions necessary to verify new volume")
+    else:
+        prCyan("You must manually run ICKDSF REFVTOC on z/OS for the change to become effective.")
+        prCyan("Review previous messages to see if ICKDSF JCL was written, and location if applicable")
+    prCyan("*****************************************************************************************")

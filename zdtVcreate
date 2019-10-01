@@ -1,0 +1,214 @@
+#!/usr/bin/env python
+# 
+# 
+# This program will create an Disk File to back a z/OS volume for zPDT Emulation. 
+# A "stub" file is required to prime new Disk Files with "pre-formatted" information
+# relating to Volume Name/Vtoc/Vtocix etc. After copying in the "stub" to the new Disk File
+# the contents are then updated to reflect the new Volume name, SMS or Not.
+# 
+# This Utility is provided for use at user's own risk. 
+# BACKUPS are your FRIEND!! 
+# BACKUPS are your FRIEND!!
+# BACKUPS are your FRIEND!!
+# repeat above another 10 times ... 
+# 
+#  Note the Below offsets were taken from a formatted Mod 1 having specific Vtoc and Index sizes
+#  and so keep in mind such Offsets could change for volumes having different attributes.
+#  For the purpose of Emulated systems the sizes I used for Vtoc/Index should suffice for most cases
+# 
+#  Volser Offsets in Hex(Dec)  varies depending on Mod 
+#  SMSByte Offsets in Hex(Dec) e059(57433), e193(57747), 270843(2558019),
+#
+#  This utility requires:
+#     zdtPyApi.py - which contains some common functions for this utility and for others
+#     mod??stub    - 40MB "stub" file which contains some vital z/OS volume formatting information required
+# 
+#  For help run this without any args or with --help  
+#
+
+
+
+# Functions are in zdtPyApi
+import zdtPyApi
+from zdtPyApi import *
+
+
+# Function to Update volser file with new Volser and VTOCIX Name 
+def updateRec(outputRec):
+        try:
+                f.write(outputRec)
+        except:
+                prRed("Error updating")
+                sys.exit()
+
+
+# Read in arguments
+readArgs()
+
+
+
+# Verify logged in as IBMSYS1
+getLoggedUser()
+
+
+
+# Let get the status of zPDT Emulator and z/OS
+checkZpdt()
+
+
+
+#get Devmap Information
+if zdtPyApi.zdtConf != '':
+    findDmInfo(zdtPyApi.loggedUser, zdtPyApi.zdtConf)
+    
+
+volser = zdtPyApi.volSer
+voldir = zdtPyApi.volDir
+newSize = zdtPyApi.newSize
+hexVol = volser.encode('cp037')
+
+
+#if zdtPyApi.upDmap == 'y' and zdtPyApi.zdtStat == 'up':
+#    prCyan("Devmap file: "+zdtPyApi.zdtConf.decode()+" will be updated")
+#else:
+#    prCyan("Devmap File: "+zdtPyApi.zdtConf.decode()+" will NOT be updated, either -nodmap specified or Emulator is currently DOWN")
+
+if zdtPyApi.zdtStat != 'up':
+    prCyan("zPDT Emulator is not active, volume can be created but no automounting possible")
+
+print(" ")
+prCyan("Volume "+volser+" about to be created in Directory: "+voldir)
+if zdtPyApi.smsFlag == 'y':
+    smsByte = b'\xc0'
+    prCyan("Volume will be created as 3390 Mod-"+newSize+" and will be SMS managed")
+else:
+    prCyan("Volume will be created as 3390 Mod-"+newSize+" and will be Non-SMS")
+if zdtPyApi.zdtConf != '':
+    if zdtPyApi.upDmap == 'y':
+        prCyan("Device Map that will be Updated: "+ zdtPyApi.zdtConf.decode())
+    else:
+        prCyan("Device Map will NOT be Updated. Active Device map is: "+ zdtPyApi.zdtConf.decode())
+print(" ")
+if hasattr(__builtins__, 'raw_input'):
+    input=raw_input  # @UndefinedVariable
+confCreate = input("Confirm Y/N")
+if confCreate != 'y':
+    sys.exit()
+
+
+# if Automount options then see if we have free devices to Automount to!
+if zdtPyApi.zdtStat == 'up':
+    if zdtPyApi.autoMnt == 'y':
+        findFreeDev()
+        if len(zdtPyApi.freeDevList) < 1:
+            prRed("Error: No free devices, Automount not possible")
+            prRed("       Processing will continue, but manual mount required")
+            prRed("       Manual Actions: awsmount xxxx -m FILE_NAME")
+            prRed("                       oprmsg 'V xxxx,ONLINE'")
+            prRed("                       Update devmap file if required/desired")
+            zdtPyApi.autoMnt = 'n'
+        else:
+            freeDev = zdtPyApi.freeDevList[0]
+            prCyan("New Volume will be mounted on device: "+freeDev.decode())
+            
+else:
+    if zdtPyApi.autoMnt == 'y':
+        prRed("Automount not possible, zPDT is Down or error obtaining zPDT status")
+        prRed("Utility will continue to create your new Device, however, you may be required")
+        prRed("To take manual action, such as:")
+        prRed("  Manually updating Devmap")
+        zdtPyApi.autoMnt = 'n'
+
+
+
+# Create new CKD Device File
+makeCkdVol(volser, newSize, zdtPyApi.progPath)
+
+
+try:
+    f = open(voldir+volser, "r+b")
+except:
+    prRed("Error opening file: "+voldir+volser+" Program aborting")
+    sys.exit()   
+ 
+
+try:
+    f.seek(741,0)
+    updateRec(hexVol)
+
+    f.seek(57681,0)
+    updateRec(hexVol)
+
+    f.seek(57714,0)
+    updateRec(hexVol)
+    
+    if newSize == '1':
+        f.seek(2566355,0)
+        updateRec(hexVol)
+
+    elif newSize == '3':
+        f.seek(2570467,0)
+        updateRec(hexVol)
+        
+    elif newSize == '9':
+        f.seek(2584859,0)
+        updateRec(hexVol)
+        
+    elif newSize == '27':
+        f.seek(2639635,0)
+        updateRec(hexVol)
+        
+    else:
+        f.seek(2728627,0)
+        updateRec(hexVol)
+        
+
+    if zdtPyApi.smsFlag == 'y':
+        f.seek(57433,0)
+        updateRec(smsByte)
+
+        f.seek(57747,0)
+        updateRec(smsByte)
+
+        f.seek(2558019,0)
+        updateRec(smsByte)
+
+    f.close()
+
+    print("Successfully completed Volume Name/Vtoc updates.")
+    
+    
+    if zdtPyApi.autoMnt == 'y':
+        print("Begin Auto mount process")
+        subprocess.call(["awsmount", freeDev, "-m", voldir+volser])
+        if zdtPyApi.zosStat == 'up':
+            devnon = str("V "+freeDev.decode()+",ONLINE")
+            #prCyan('Activated z/OS Console and varying drive: '+freeDev.decode()+' online to z/OS. Executing command: oprmsg V '+freeDev.decode()+',ONLINE')
+            sendOprMsg(devnon, zdtPyApi.curLogFile, zdtPyApi.slpTime, 'y')
+    
+            #if zdtPyApi.zdtRDR == 'y' and newSize != '1':
+            #   subIckdsfJcl(volser)
+            #   if zdtPyApi.fndOut == 'y':
+            #       checkIckOut(volser) 
+            #else:
+            #   if newSize != '1':
+            #       prRed("Skipping automatic ICKDSF REFVTOC Processing. See prior messages.")      
+        
+        else:
+            prRed("z/OS is not up, cannot vary device online")  
+            prRed("Device is ready to be used, but manual actions required to vary online to z/OS") 
+
+    prCyan("New volume has been created: "+voldir+volser)
+    
+    #if zdtPyApi.autoMnt == 'n' and newSize != '1':
+    #   prCyan("You MUST manually run ICKDSF REFVTOC after z/OS is up and device is online")
+    #   prCyan("Otherwise your volume will only be recognized as having 1113 cyliners")
+
+    if zdtPyApi.upDmap != 'n' and zdtPyApi.autoMnt == 'y' and zdtPyApi.zdtConf != '':
+        updateDevmap(freeDev, zdtPyApi.zdtConf, voldir, volser)
+    else:
+        prCyan("Devmap file has NOT been updated due to -nodmap or -m specified, or other issues inhibiting update. Manual action may be required. Review all prior messages and options used")  
+except:
+    print(sys.exc_info()) 
+    prRed("Failed creating new volume: "+volser)
+    f.close()

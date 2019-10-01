@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+#
+# oprmsg "wrapper" to issue z/OS command and obtain response
+# This utility is useful if you have logged off the ID that issued the awsstart, since 
+# after this point you have lost connection to the SCLP console with oprmsg.
+#            
+# Example:
+#  
+#  zdtmsg 'd a,l' 
+#  zdtmsg 'd a,l' -w 999    this is a neat feature that lets you "monitor" the console for new messages for 999 seconds 
+#  zdtmsg 'd a,l' -w 10     same as above for 10 seconds 
+#                                                           
+# This calls some of the functions from zdtPyApi                                                           
+#                                                          
+import zdtPyApi
+from zdtPyApi import *
+
+# Read arguments
+readArgs()
+
+# See who's running this and if they can access zPDT code
+getLoggedUser()
+
+# Check Status of zPDT Emulator
+checkZpdt()
+
+# Obtain info from Devmap file
+findDmInfo(zdtPyApi.loggedUser, zdtPyApi.zdtConf)
+
+# Parse out command to pass to oprmsg
+oprStr = b""
+for args in sys.argv[1:]:
+    if args == '-w':
+        break
+    arg = " "+args
+    oprStr+=arg.encode()
+
+# Run it!
+sendOprMsg(oprStr.decode(), zdtPyApi.curLogFile, zdtPyApi.slpTime, 'y')
+
+

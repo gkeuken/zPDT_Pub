@@ -53,9 +53,9 @@ print(" ")
 
 if hasattr(__builtins__, 'raw_input'):
     input=raw_input  # @UndefinedVariable
-verify = input("\033[96m Press Y to Accept the Risk and continue, or anything else to abort\033[00m ").upper()
+verify = input("\033[96m Press y to Accept the Risk and continue, or anything else to abort\033[00m ").upper()
 print(" ")
-if verify != 'Y':
+if verify != 'y':
     prCyan('Aborting at your request')
     sys.exit()
 else:
@@ -93,7 +93,7 @@ else:
         if hasattr(__builtins__, 'raw_input'):
             input=raw_input  # @UndefinedVariable
 
-        cont = input("Enter Y to continue anyway, anything else to abort")
+        cont = input("Enter y to continue anyway, anything else to abort")
         if cont != 'y':
             sys.exit()
     zdtStat = zdtPyApi.zdtStat
@@ -152,7 +152,7 @@ else:
             if hasattr(__builtins__, 'raw_input'):
                 input=raw_input  # @UndefinedVariable
             if devStatus == 'OFFLINE':    
-                verf = input("Review messages above to verify volume is OFFLINE to z/OS (NOT pending), Reply Y to continue or anything else to abort ")
+                verf = input("Review messages above to verify volume is OFFLINE to z/OS (NOT pending), Reply y to continue or anything else to abort ")
             else:
                 prRed("ERROR: Device is NOT Offline. Volume Resize will terminate")
                 verf = 'n'

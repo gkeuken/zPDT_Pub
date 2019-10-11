@@ -91,7 +91,7 @@ if zdtPyApi.zdtConf != '':
 print(" ")
 if hasattr(__builtins__, 'raw_input'):
     input=raw_input  # @UndefinedVariable
-confCreate = input("Confirm Y/N")
+confCreate = input("Confirm y/n")
 if confCreate != 'y':
     sys.exit()
 

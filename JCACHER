@@ -1,3 +1,4 @@
+/* REXX */ 
 JRC = 0 
 parse arg sfw cmd_in 
 UPPER="ABCDEFGHIJKLMNOPQRSTUVWXYZ" 

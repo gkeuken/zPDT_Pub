@@ -1,0 +1,10 @@
+-Xms256m                                            
+-Xmx512m                                            
+-Xquickstart                                        
+-Xshareclasses:nonFatal                             
+-Xshareclasses:groupAccess                          
+-Xshareclasses:cacheDirPerm=0777                    
+-Xscmx50m                                           
+-Xshareclasses:cacheDir=/javasc/zcn,name=zcncache   
+-Xlp:objectheap:pagesize=1m,warn,pageable           
+-Xlp:codecache:pagesize=1m,pageable                 

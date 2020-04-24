@@ -22,8 +22,9 @@ do main = 1 to sfwc.0
   say "Attempting "cmd_in" for: "sfw 
   out.0 = 0 
   err.0 = 0 
-  env.1 = "/usr/lpp/java/J8.0_64/bin/" 
-  env.0 = 1 
+  env.1 = "PATH=/usr/lpp/java/J8.0_64/bin/" 
+  env.2 = "HOME=/" 
+  env.0 = 2 
   in.0 = 0 
   jc="java -Xshareclasses:cacheDir=/javasc/" 
   jc=jc||sfw",name="sfw"cache,"cmd_in 

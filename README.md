@@ -1,11 +1,11 @@
 # zPDT_Stuff
 General Repo for zPDT Stuff
 
-See Wiki Page for all the gory details => https://github.ibm.com/gkeuken/zPDT_Stuff/wiki
+See Wiki Page for all the gory details => https://github.com/gkeuken/zPDT_Pub/wiki
 
 Recent Updates:
 
-Added Python 3 support
+Added Python 3 support, actually some of this stuff doesn't work without Python 3 
 
 Added -w arg for zdtmsg - will allow user to specify wait time for receiving messages.
 

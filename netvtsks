@@ -9,10 +9,27 @@ def getcfgvol():
     for line in spout.stdout.splitlines():
         if (b"CFG1" in line):
             cfgVol = line.split()[5].decode()
+            if (cfgVol[0] != '/'):
+                getCfgdir()
+                cfgVol = newCfgdir+cfgVol
+
+def getCfgdir():
+    global newCfgdir
+    newCfgdir = str()
+    spout = subprocess.run(['awsstat'], stdout=subprocess.PIPE)
+    for line in spout.stdout.splitlines():
+        if (b"Config file:" in line):
+            cfgwDir = line.split()[2].decode()
+            cfgDir = cfgwDir.split("/")
+            cfgDirlen = len(cfgDir)-1
+    for x in range(1, cfgDirlen):
+        newCfgdir = newCfgdir+"/"+cfgDir[x]
+    newCfgdir=newCfgdir+"/"
+
 
 def getnetv_globals():
     try:
-        subprocess.run(["pdsUtil", cfgVol, "NETVIEW.CNM01.CNMCLST/GLBCNM01", "--extract"],stdout=PIPE,check=True)
+        subprocess.run(["pdsUtil", cfgVol, "NETVIEW.CNM01.CNMCLST/GLBCNM01", newCfgdir+"GLBCNM01.txt", "--extract"],stdout=PIPE,check=True)
     except subprocess.CalledProcessError as err:
         print(err)
         print("Unable to obtain Netview Globals configuration file, not able to continue")
@@ -26,7 +43,8 @@ tasklist = []
 tasklist.append([])
 tasklist[0].append('MVS')
 tcnt = 0
-tlist = open('GLBCNM01.txt', "r")
+netfile = newCfgdir+"GLBCNM01.txt"
+tlist = open(netfile, "r")
 for line in tlist:
     if "TASK.X ' = " in line:
         taskname = (line.split()[4].strip('\"\''))

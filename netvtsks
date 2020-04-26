@@ -1,0 +1,21 @@
+#!/usr/bin/env python 
+
+tasklist = []
+tasklist.append([])
+tasklist[0].append('MVS')
+tcnt = 0
+tlist = open('GLBCNM01.txt', "r")
+for line in tlist:
+    if "TASK.X ' = " in line:
+        taskname = (line.split()[4].strip('\"\''))
+        if taskname != 'MVS':
+            tasklist.append([])
+            tcnt+=1
+            tasklist[tcnt].append(taskname)
+    if "PARN.X ' = " in line and taskname != 'MVS':
+        parent = line.split()[4].strip('\"\'').replace(',', ' ')
+        for words in parent.split():
+            tasklist[tcnt].append(words)
+tlist.close()
+for words in tasklist:
+    print(words)

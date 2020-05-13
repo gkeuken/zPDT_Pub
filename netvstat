@@ -75,16 +75,18 @@ def checkone_task():
                     taskstat = b' '    
             else:
                 taskstat = b' '
-            prtcol = '\033[00m'
+            prtcol = '\033[00m' 
             if taskstat.decode() == 'UP':
-                prtcol = '\033[00m'         #Green
+                prtcol = '\033[32m'         #Green
             if taskstat.decode() == 'DOWN':
                 prtcol = '\033[31m'         #Red
             if taskstat.decode() == 'NOSTART':
-                prtcol = '\033[34m'         #Blue
+                prtcol = '\033[33m'         #Yellow
+            if taskstat.decode() == 'COMPLETE':
+                prtcol = '\033[92m'         #Green 
             if taskstat.decode() == 'STOPPING':
-                prtcol = '\033[33m'         #Yellow 
-            rstcol = '\033[00m'             #Green
+                prtcol = '\033[93m'         #Yellow 
+            rstcol = '\033[00m'             
             whtcol = '\033[37m'             #White
             blucol = '\033[34m'
             savpars = []

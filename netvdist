@@ -43,35 +43,40 @@ def getnetv_globals():
 
 getcfgvol()
 getnetv_globals()
-tcnt = 0
 inTask = sys.argv[1]
 setStat = sys.argv[2]
 print("Setting startup value for:", inTask, "to value: ", setStat)
 netfile = newCfgdir+"GLBCNM01.txt"
 newfile = newCfgdir+"GLBCNM01.txt.new"
-tlist = open(netfile, "r")
-wlist = open(newfile, "w")
-update = 'notdone'
-foundtask = 'no'
+try:
+    tlist = open(netfile, "r")
+    wlist = open(newfile, "w")
+except:
+    print("Error opening required files")
+    sys.exit()
+
+found = 'no'
+updated = 'no'
 
 for line in tlist:
     if "TASK.X ' = " in line:
         taskname = (line.split()[4].strip('\"\''))
         if taskname == inTask:
-            foundtask = 'yes'
-    if "STAT.X ' = " in line and foundtask == 'yes'and taskname == inTask:
-        print(taskname, inTask, foundtask)
-        print(line)
+            found = 'yes'
+    if "STAT.X ' = " in line and taskname == inTask:
         if setStat == "disable":
             newLine = "INTERPREX SYSSTR||STAT.X ' = "'"'"NOSTART"'"'"'\n"
         if setStat == "enable":
             newLine = "INTERPREX SYSSTR||STAT.X ' = 'STATUS\n"
-        print("Replacing startup for: ", taskname, newLine)
+        print("Changing startup to: ",setStat, "for: " , taskname)
         wlist.write(newLine)
-        update = 'done'
+        updated = 'yes'
+        break
     else:
         wlist.write(line)
+if found == 'no':
+    print("Task : ",inTask, "not found")
+if found == 'yes' and updated == 'no':
+    print ("Error updating: ", inTask, found, updated)
 tlist.close()
 wlist.close()
-#for words in tasklist:
-#    print(words)

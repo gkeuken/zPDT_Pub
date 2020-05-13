@@ -1,0 +1,77 @@
+#!/usr/bin/env python3 
+
+import subprocess
+import sys
+from subprocess import PIPE, CalledProcessError
+
+def getcfgvol():
+    global cfgVol
+    spout = subprocess.run(['awsstat'], stdout=subprocess.PIPE)
+    for line in spout.stdout.splitlines():
+        if (b"CFG1" in line):
+            cfgVol = line.split()[5].decode()
+            getCfgdir()
+            if (cfgVol[0] != '/'):
+                cfgVol = newCfgdir+cfgVol
+
+def getCfgdir():
+    global newCfgdir
+    newCfgdir = str()
+    if (cfgVol[0] != '/'):
+         spout = subprocess.run(['awsstat'], stdout=subprocess.PIPE)
+         for line in spout.stdout.splitlines():
+             if (b"Config file:" in line):
+                 cfgwDir = line.split()[2].decode()
+                 cfgDir = cfgwDir.split("/")
+                 cfgDirlen = len(cfgDir)-1
+    else:
+         cfgDirlen = len(cfgVol.split("/"))-1
+         cfgDir = cfgVol.split("/")
+    for x in range(1, cfgDirlen):
+        newCfgdir = newCfgdir+"/"+cfgDir[x]
+    newCfgdir=newCfgdir+"/"
+
+
+def getnetv_globals():
+    try:
+        subprocess.run(["pdsUtil", cfgVol, "NETVIEW.CNM01.CNMCLST/GLBCNM01", newCfgdir+"GLBCNM01.txt", "--extract"],stdout=PIPE,check=True)
+    except subprocess.CalledProcessError as err:
+        print(err)
+        print("Unable to obtain Netview Globals configuration file, not able to continue")
+        print("Verify you are currently in the directory where the zPDT volumes reside. (eg. /home/ibmsys1/zdt/volumes/")
+        sys.exit()
+
+getcfgvol()
+getnetv_globals()
+tcnt = 0
+inTask = sys.argv[1]
+setStat = sys.argv[2]
+print("Setting startup value for:", inTask, "to value: ", setStat)
+netfile = newCfgdir+"GLBCNM01.txt"
+newfile = newCfgdir+"GLBCNM01.txt.new"
+tlist = open(netfile, "r")
+wlist = open(newfile, "w")
+update = 'notdone'
+foundtask = 'no'
+
+for line in tlist:
+    if "TASK.X ' = " in line:
+        taskname = (line.split()[4].strip('\"\''))
+        if taskname == inTask:
+            foundtask = 'yes'
+    if "STAT.X ' = " in line and foundtask == 'yes'and taskname == inTask:
+        print(taskname, inTask, foundtask)
+        print(line)
+        if setStat == "disable":
+            newLine = "INTERPREX SYSSTR||STAT.X ' = "'"'"NOSTART"'"'"'\n"
+        if setStat == "enable":
+            newLine = "INTERPREX SYSSTR||STAT.X ' = 'STATUS\n"
+        print("Replacing startup for: ", taskname, newLine)
+        wlist.write(newLine)
+        update = 'done'
+    else:
+        wlist.write(line)
+tlist.close()
+wlist.close()
+#for words in tasklist:
+#    print(words)

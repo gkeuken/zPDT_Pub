@@ -22,24 +22,28 @@ def getcfgvol():
     for line in spout.stdout.splitlines():
         if (b"CFG1" in line):
             cfgVol = line.split()[5].decode()
+            getCfgdir()
             if (cfgVol[0] != '/'):
-                getCfgdir()
                 cfgVol = newCfgdir+cfgVol
+                
 
 def getCfgdir():
     global newCfgdir
-    newCfgdir = str() 
-    spout = subprocess.run(['awsstat'], stdout=subprocess.PIPE)
-    for line in spout.stdout.splitlines():
-        if (b"Config file:" in line):
-            cfgwDir = line.split()[2].decode()
-            cfgDir = cfgwDir.split("/")
-            cfgDirlen = len(cfgDir)-1
+    newCfgdir = str()
+    if (cfgVol[0] != '/'):
+         spout = subprocess.run(['awsstat'], stdout=subprocess.PIPE)
+         for line in spout.stdout.splitlines():
+             if (b"Config file:" in line):
+                 cfgwDir = line.split()[2].decode()
+                 cfgDir = cfgwDir.split("/")
+                 cfgDirlen = len(cfgDir)-1
+    else:
+         cfgDirlen = len(cfgVol.split("/"))-1
+         cfgDir = cfgVol.split("/")
     for x in range(1, cfgDirlen):
         newCfgdir = newCfgdir+"/"+cfgDir[x]
     newCfgdir=newCfgdir+"/"
-
-
+    print(newCfgdir)
 
 # Check all tasks for parents in the parlist to be removed 
 def removepar():

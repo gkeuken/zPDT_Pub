@@ -1,5 +1,13 @@
 #!/usr/bin/env python3 
 
+#
+# netvtsks simply lists all defined tasks
+# that are controlled by Netview. The display 
+# shows the tasks as well as any "parent" tasks.
+#
+# 
+#
+
 import subprocess 
 from subprocess import PIPE, CalledProcessError
 

@@ -1,5 +1,15 @@
 #!/usr/bin/env python3 
 
+#
+#  netvstat obtains the status of 
+#  all running tasks z/OS subsystem tasks.
+#
+#  In addition, the display is shown "Tree-Style"
+#  so you can visually see the relationships of 
+#  how tasks are started/shutdown.
+# 
+#  netvstat accepts no parameters run it as is
+
 import subprocess 
 import sys
 from subprocess import PIPE, CalledProcessError

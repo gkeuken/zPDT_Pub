@@ -72,10 +72,8 @@ for line in tlist:
             found = 'yes'
     if "STAT.X ' = " in line and taskname == inTask:
         if setStat == "disable":
-            #newLine = "INTERPRET SYSSTR||STAT.X ' = "'"'"NOSTART"'"'"'                                         \n"
             newLine = "INTERPRET SYSSTR||STAT.X ' = "'"'"NOSTART"'"'"'\n"
         if setStat == "enable":
-            #newLine = "INTERPRET SYSSTR||STAT.X ' = 'STATUS                                           \n"
             newLine = "INTERPRET SYSSTR||STAT.X ' = 'STATUS\n"
         print("Changing startup to: ",setStat, "for: " , taskname)
         try:

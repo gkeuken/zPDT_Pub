@@ -31,7 +31,14 @@ def getCfgdir():
         newCfgdir = newCfgdir+"/"+cfgDir[x]
     newCfgdir=newCfgdir+"/"
 
-
+def replace_netv_globals():
+    try:
+        subprocess.run(["pdsUtil", cfgVol, "NETVIEW.CNM01.CNMCLST/GLBCNM01", newCfgdir+"GLBCNM01.txt.new", "--overlay"],stdout=PIPE,check=True)
+    except subprocess.CalledProcessError as err:
+        print(err)
+        print("Unable to write new Netview Globals configuration file, unable to continue")
+        sys.exit()
+    
 def getnetv_globals():
     try:
         subprocess.run(["pdsUtil", cfgVol, "NETVIEW.CNM01.CNMCLST/GLBCNM01", newCfgdir+"GLBCNM01.txt", "--extract"],stdout=PIPE,check=True)
@@ -65,18 +72,26 @@ for line in tlist:
             found = 'yes'
     if "STAT.X ' = " in line and taskname == inTask:
         if setStat == "disable":
-            newLine = "INTERPREX SYSSTR||STAT.X ' = "'"'"NOSTART"'"'"'\n"
+            #newLine = "INTERPRET SYSSTR||STAT.X ' = "'"'"NOSTART"'"'"'                                         \n"
+            newLine = "INTERPRET SYSSTR||STAT.X ' = "'"'"NOSTART"'"'"'\n"
         if setStat == "enable":
-            newLine = "INTERPREX SYSSTR||STAT.X ' = 'STATUS\n"
+            #newLine = "INTERPRET SYSSTR||STAT.X ' = 'STATUS                                           \n"
+            newLine = "INTERPRET SYSSTR||STAT.X ' = 'STATUS\n"
         print("Changing startup to: ",setStat, "for: " , taskname)
-        wlist.write(newLine)
+        try:
+             wlist.write(newLine)
+        except:
+            print("Error writing new Global variable file")
+            sys.exit()
         updated = 'yes'
-        break
-    else:
-        wlist.write(line)
+        continue
+    wlist.write(line)
 if found == 'no':
     print("Task : ",inTask, "not found")
 if found == 'yes' and updated == 'no':
     print ("Error updating: ", inTask, found, updated)
 tlist.close()
 wlist.close()
+if found == 'yes' and updated == 'yes':
+    replace_netv_globals()
+

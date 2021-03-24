@@ -4,9 +4,11 @@
 #  stopzos performs a clean shutdown of z/OS
 # 
 #  stopzos accepts three parameters 
-#  command name - z/OS console command to initiate system shutdown (default is '%netv shutsys' which works on ZD&T ADCD)
-#  taskname - task to monitor to determine if z/OS is completely down (default is JES2)
-#  timeout - time to wait for shutdown to complete (default is 300 seconds, 5 minutes)
+#  -c command name - z/OS console command to initiate system shutdown (default is '%netv shutsys' which works on ZD&T ADCD)
+#  -z taskname     - task to monitor to determine if z/OS is completely down (default is JES2)
+#  -t timeout      - time to wait for shutdown to complete (default is 300 seconds, 5 minutes)
+#  -awsstop        - if specified then after timeout or z/OS is down then command awsstop is executed
+#  -noverify       - if specified then issue no prompts to confirm/abort
 
 
 # Functions are in zdtPyApi

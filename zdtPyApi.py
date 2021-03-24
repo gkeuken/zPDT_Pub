@@ -93,6 +93,7 @@ def printHelp():
         print("-c z/OS Shutdown Command      Optional: The z/OS Console command to shutdown z/OS. Default is %netv shutsys, which only works for ADCD")
         print("-z Final z/OS Subsystem       Optional: Task to check to ensure z/OS is completely down. Default is JES2")
         print("-t Timeout (seconds)          Optional. Default is 300 Seconds.")
+        print("-awsstop                      Optional. If specified then zPDT command awsstop will be executed after timeout or after z/OS is down.")
 
     elif 'zdtVcreate' in sys.argv[0]:
         prCyan("** zdtVcreate Input Requirements: **")
@@ -290,7 +291,7 @@ def readArgs():
         arglist = ['-s','-v','-d','-m','-nodmap','-sms','--help']
     elif 'stopZos' in sys.argv[0]:
         pfunc = 'stopZos'
-        arglist = ['-c','-z','-t','--help']
+        arglist = ['-c','-z','-t','-awsstop','-noverify','--help']
     else:
         pfunc = 'zdtmsg'
         arglist = ['-w','--help']
@@ -299,7 +300,7 @@ def readArgs():
         printHelp()
         sys.exit()
     size_list = ['1','3','9','27','54']
-    global stopTime, shutCmd, endTask, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp
+    global stopTime, shutCmd, endTask, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp, awsstop, noverify
     progPath = os.path.realpath(__file__).strip('zdtPyApi.py')
     progPath = os.path.realpath(__file__).strip('zdtPyApi.pyc')
     try:
@@ -313,6 +314,8 @@ def readArgs():
         autoMnt = 'y'
         stopTime = 480
         shutCmd = '%netv shutsys'
+        awsstop = 'no'
+        noverify = 'N'
         endTask = 'JES2'
         upDmap = 'y'
         newSize = '1'
@@ -341,7 +344,7 @@ def readArgs():
                 shutCmd = sys.argv[x+1]
                 x += 1
             elif sys.argv[x] == '-z':
-                endTask = sys.argv[x+1]
+                endTask = sys.argv[x+1].upper()
                 x += 1
             elif sys.argv[x] == '-t':
                 stopTime = int(sys.argv[x+1])
@@ -352,6 +355,10 @@ def readArgs():
                 if newSize not in size_list:
                     raise ValueError('New volume size specified must be 1, 3, 9, 27 or 54')
 
+            elif sys.argv[x] == '-noverify':
+                noverify = 'Y'
+            elif sys.argv[x] == '-awsstop':
+                awsstop = 'Y'
             elif sys.argv[x] == '-sms':
                 smsFlag = 'y'
             elif sys.argv[x] == '-d':

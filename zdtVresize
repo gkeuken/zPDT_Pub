@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # This scripts can be used to "zap" a linux volume file used by zPDT to a larger size
 # In summary this script does the following:

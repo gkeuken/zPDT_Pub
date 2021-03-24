@@ -1,0 +1,74 @@
+#!/usr/bin/env python3 
+
+#
+#  stopzos performs a clean shutdown of z/OS
+# 
+#  stopzos accepts three parameters 
+#  command name - z/OS console command to initiate system shutdown (default is '%netv shutsys' which works on ZD&T ADCD)
+#  taskname - task to monitor to determine if z/OS is completely down (default is JES2)
+#  timeout - time to wait for shutdown to complete (default is 300 seconds, 5 minutes)
+
+
+# Functions are in zdtPyApi
+import zdtPyApi
+from zdtPyApi import *
+
+
+# Read in arguments
+readArgs()
+
+
+# Verify logged in as IBMSYS1 or ID that can execute zPDT commands
+getLoggedUser()
+
+
+# Lets get the status of zPDT Emulator and z/OS
+checkZpdt()
+
+
+#get Devmap Information
+if zdtPyApi.zdtConf != '':
+    findDmInfo(zdtPyApi.loggedUser, zdtPyApi.zdtConf)
+
+else:
+    prRed("Unable to obtain zPDT configuration information, aborting")
+    sys.exit()
+
+if zdtPyApi.zdtStat != 'up':
+    prRed("zPDT Emulator is not active, z/OS is already down")
+
+else:
+    chkEndTask()
+    totTime = 0
+    intTime = 30                      # interval, in seconds, of when to recheck if endTask is down 
+    if zdtPyApi.zosIsUp == 'yes':
+        prCyan("stopZos using task "+zdtPyApi.endTask+" to determine z/OS status")
+        prCyan("stopZos will shutdown z/OS using command: "+zdtPyApi.shutCmd)
+        prCyan("stopZos will timeout after: "+str(zdtPyApi.stopTime)+" seconds")
+        if hasattr(__builtins__, 'raw_input'):
+            input=raw_input  # @UndefinedVariable
+        verify = input("\033[96m Press y to proceed with z/OS Shutdown, or anything else to abort\033[00m ").upper()
+        print(" ")
+        if verify != 'Y':
+            prCyan('Aborting at your request')
+            sys.exit()
+        else:
+            pass
+        sendOprMsg(zdtPyApi.shutCmd, zdtPyApi.curLogFile, 1, 't')
+        while totTime < zdtPyApi.stopTime:
+            time.sleep(intTime)
+            totTime += intTime
+            chkEndTask()
+            if zdtPyApi.zosIsUp == 'no':
+                totTime = zdtPyApi.stopTime
+                prCyan("z/OS now considered down, task "+zdtPyApi.endTask+" has ended")
+                #prRed("Issuing zPDT awsstop")
+                #subprocess.call(["awsstop"])
+        if zdtPyApi.zosIsUp == 'yes':
+            prRed("stopZos has timed out waiting for "+zdtPyApi.endTask+" to end")
+            #prRed("Issuing zPDT awsstop")
+            # subprocess.call(["awsstop"])
+    else:
+        prRed("z/OS already appears to be down, "+zdtPyApi.endTask+" was not found")
+        #prRed("Issuing zPDT awsstop")
+        #subprocess.call(["awsstop"])

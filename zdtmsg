@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # oprmsg "wrapper" to issue z/OS command and obtain response
 # This utility is useful if you have logged off the ID that issued the awsstart, since 

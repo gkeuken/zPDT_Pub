@@ -33,6 +33,16 @@ def prCyan(prt):
     print("\033[96m {}\033[00m" .format(prt))
 
 
+# Used for stopZos to check if a task is still running or not
+def chkEndTask():
+    global zosIsUp 
+    chkStat = str('d a,'+endTask)
+    foundTask = 'no'
+    zosIsUp = 'yes'
+    sendOprMsg(chkStat, curLogFile, slpTime, 't')
+    for lines in trapMsg.splitlines():
+        if endTask+" NOT FOUND" in lines:
+            zosIsUp = 'no'
 
 
 # Check to see who is logged on and ensure can access zPDT .. typically ibmsys1.
@@ -76,6 +86,13 @@ def printHelp():
         print("EXAMPLES: ")
         print("   zdtVresize -i TEST01 -s 27                                     Resize TEST01 to Mod 27, TEST01 currently mounted volume")
         print("   zdtVresize -i -d /z/volumes ZDTVOLUME1 -v TEST01 -s 27         Linux Disk file is not same a z/OS volume so -v argument required")
+    elif 'stopZos' in sys.argv[0]:
+        prCyan("** stopZos Input Requirements: **")
+        print("Run this utility with linux user that starts zPDT and IPLs z/OS")
+        print(" ")
+        print("-c z/OS Shutdown Command      Optional: The z/OS Console command to shutdown z/OS. Default is %netv shutsys, which only works for ADCD")
+        print("-z Final z/OS Subsystem       Optional: Task to check to ensure z/OS is completely down. Default is JES2")
+        print("-t Timeout (seconds)          Optional. Default is 300 Seconds.")
 
     elif 'zdtVcreate' in sys.argv[0]:
         prCyan("** zdtVcreate Input Requirements: **")
@@ -271,15 +288,18 @@ def readArgs():
     elif 'zdtVcreate' in sys.argv[0]:
         pfunc = 'zdtVcreate'
         arglist = ['-s','-v','-d','-m','-nodmap','-sms','--help']
+    elif 'stopZos' in sys.argv[0]:
+        pfunc = 'stopZos'
+        arglist = ['-c','-z','-t','--help']
     else:
         pfunc = 'zdtmsg'
         arglist = ['-w','--help']
     arg_len = len(sys.argv)
-    if arg_len < 2:
+    if arg_len < 2 and 'stopZos' not in sys.argv[0]:
         printHelp()
         sys.exit()
     size_list = ['1','3','9','27','54']
-    global progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp
+    global stopTime, shutCmd, endTask, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp
     progPath = os.path.realpath(__file__).strip('zdtPyApi.py')
     progPath = os.path.realpath(__file__).strip('zdtPyApi.pyc')
     try:
@@ -291,6 +311,9 @@ def readArgs():
         volSer = ''
         inVol = ''
         autoMnt = 'y'
+        stopTime = 480
+        shutCmd = '%netv shutsys'
+        endTask = 'JES2'
         upDmap = 'y'
         newSize = '1'
         inUid = 'IBMUSER'
@@ -303,7 +326,9 @@ def readArgs():
         while x < arg_len:
             x += 1
             if sys.argv[x] not in arglist:
-                if 'zdtmsg' in sys.argv[0] and x == 1:
+                if 'stopZos' in sys.argv[0] and x == 0:
+                    pass
+                elif 'zdtmsg' in sys.argv[0] and x == 1:
                     pass
                 else:
                     prRed("Invalid Arg passed")
@@ -312,6 +337,15 @@ def readArgs():
             if sys.argv[1] == '--help':
                 printHelp()
                 sys.exit()
+            elif sys.argv[x] == '-c':
+                shutCmd = sys.argv[x+1]
+                x += 1
+            elif sys.argv[x] == '-z':
+                endTask = sys.argv[x+1]
+                x += 1
+            elif sys.argv[x] == '-t':
+                stopTime = int(sys.argv[x+1])
+                x += 1
             elif sys.argv[x] == '-s':
                 newSize = sys.argv[x+1]
                 x += 1
@@ -584,6 +618,7 @@ def findDmInfo(loggedUser, zdtConf):
 
 # send commands to zPDT and retrieve responses
 def sendOprMsg(oprStr, logFile, slpTime, prtOpt):
+    global trapMsg
     nowTme = strftime("%H:%M:%S",gmtime())
     conOn = 'v cn(*),act'
     conOff = 'v cn(*),deact'
@@ -623,9 +658,10 @@ def sendOprMsg(oprStr, logFile, slpTime, prtOpt):
                             pass
                     except KeyboardInterrupt:
                             pass
-    if sys.version_info[0] >= 3 and sys.version_info[1] >= 5:
-        subprocess.run(["oprmsg", conOff])
-    else:
-        subprocess.call(["oprmsg", conOff])
+    #if noConOff == 'no':
+    #    if sys.version_info[0] >= 3 and sys.version_info[1] >= 5:
+    #       subprocess.run(["oprmsg", conOff])
+    #    else:
+    #        subprocess.call(["oprmsg", conOff])
     if prtOpt == 't':
         return trapMsg

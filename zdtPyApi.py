@@ -43,6 +43,13 @@ def chkEndTask():
     for lines in trapMsg.splitlines():
         if endTask+" NOT FOUND" in lines:
             zosIsUp = 'no'
+    if "%NETV" not in shutCmd and zosIsUp == 'yes':
+        sendOprMsg("$DJES2", curLogFile, 1, 't')
+        for lines in trapMsg.splitlines():
+            if "$HASP608" in lines and "STC" in lines:
+                pass
+            else:
+                sendOprMsg("$PJES2", curLogFile, 1, 't')
 
 
 # Check to see who is logged on and ensure can access zPDT .. typically ibmsys1.
@@ -116,6 +123,17 @@ def printHelp():
         print("   zdtVcreate -v TEST00 -d /z -s 27      ; Non SMS Mod 27 volume to be created in directory /z")
         print("   zdtVcreate -v TEST02 -s 27            ; nodmap   - do not update Devmap file")
         print("   zdtVcreate -v TEST02 -m -s 27         ; Just create the new file, no automatic mounting etc")
+    elif 'pdsU' in sys.argv[0]:
+        prCyan("** pdsU Input Requirements: **")
+        print("Run this utility with linux user that starts zPDT and IPLs z/OS. pdsU is really just a 'wrapper' for the pdsUtil zPDT command")
+        print(" ")
+        print("-d Volume Directory           Optional: will default to current directory")
+        print("-v Volume Name                Required: Volume containing the PDS to be updated")
+        print("-p PDS Name                   Required: PDS Name containing the Member to be updated")
+        print("-q Member Name                Required: Member Name to be updated.")
+        print("-r Search String              Optional: Quoted Search String to be replaced by Replacement String.")
+        print("-x Replacement String         Optional: Quoted Replacement string which will replace Search String.")
+
     else:
         prCyan("** zdtmsg Input Requirements: **")
         print("-w       Optional: time to wait for messages, default is .5 seconds, supported with Python 3.3 or greater")
@@ -289,6 +307,9 @@ def readArgs():
     elif 'zdtVcreate' in sys.argv[0]:
         pfunc = 'zdtVcreate'
         arglist = ['-s','-v','-d','-m','-nodmap','-sms','--help']
+    elif 'pdsU' in sys.argv[0]:
+        pfunc = 'pdsU'
+        arglist = ['-d','-v','-p','-q','-r','-x','--help']
     elif 'stopZos' in sys.argv[0]:
         pfunc = 'stopZos'
         arglist = ['-c','-z','-t','-awsstop','-noverify','--help']
@@ -300,7 +321,7 @@ def readArgs():
         printHelp()
         sys.exit()
     size_list = ['1','3','9','27','54']
-    global stopTime, shutCmd, endTask, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp, awsstop, noverify
+    global stopTime, shutCmd, endTask, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp, awsstop, noverify, pdsName, memName, searchStr, replStr
     progPath = os.path.realpath(__file__).strip('zdtPyApi.py')
     progPath = os.path.realpath(__file__).strip('zdtPyApi.pyc')
     try:
@@ -313,7 +334,11 @@ def readArgs():
         inVol = ''
         autoMnt = 'y'
         stopTime = 480
-        shutCmd = '%netv shutsys'
+        shutCmd = 'null'
+        pdsName = ''
+        memName = ''
+        searchStr = ''
+        replStr = 'null'
         awsstop = 'no'
         noverify = 'N'
         endTask = 'JES2'
@@ -368,6 +393,18 @@ def readArgs():
                     pass
                 else:
                     volDir = volDir+'/'
+            elif sys.argv[x] == '-r':
+                searchStr = sys.argv[x+1]
+                x += 1
+            elif sys.argv[x] == '-x':
+                replStr = sys.argv[x+1]
+                x += 1
+            elif sys.argv[x] == '-q':
+                memName = sys.argv[x+1]
+                x += 1
+            elif sys.argv[x] == '-p':
+                pdsName = sys.argv[x+1]
+                x += 1
             elif sys.argv[x] == '-u':
                 inUid = sys.argv[x+1]
                 x += 1
@@ -439,6 +476,41 @@ def readArgs():
         sys.exit()
 
 
+def getIplInfo():
+    global shutCmd
+    sendOprMsg('D IPLINFO', curLogFile, 1, 't')
+    if "USED LOADAU IN SYS1.IPLPARM" in trapMsg:
+        shutCmd = '%NETV SHUTSYS'
+    elif "USED LOADNZ IN SYS1.IPLPARM" in trapMsg:
+        shutCmd = '%NETV SHUTSYS'
+    elif "USED LOADNV IN SYS1.IPLPARM" in trapMsg:
+        shutCmd = '%NETV SHUTSYS'
+    elif "USED LOADCS IN SYS1.IPLPARM" in trapMsg:
+        shutCmd = 'S SHUTCS'
+    elif "USED LOADAL IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTALL'
+    elif "USED LOADDB IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTDB'
+    elif "USED LOADCI IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTCI'
+    elif "USED LOADIM IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTIM'
+    elif "USED LOADIZ IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTIZ'
+    elif "USED LOADWA IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTWA'
+    elif "USED LOADDC IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTDC'
+    elif "USED LOADDW IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTALL'
+    elif "USED LOADWS IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTCS'
+    elif "USED LOAD00 IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUT00'
+    elif "USED LOADZE IN SYS1.IPLPARM" in trapMsg:  
+        shutCmd = 'S SHUTZE'
+      
+
 
 
 #Make CKD File for zdtVcreate. Ensure you are not trying to create something that already exists. 
@@ -455,6 +527,36 @@ def makeCkdVol(volSer, newSize, progPath):
                 sys.exit()
 
 
+
+def readFile(volDir, volSer, pdsName, memName, searchStr, replStr):
+    pdsUstr=str(pdsName+"/"+memName+" /tmp/"+memName+" --extract") 
+    try:
+        if os.path.exists(volDir+volSer):
+            subprocess.run(["rm", "/tmp/"+memName])
+            subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--extract"],stderr=None,stdout=None,capture_output=False)
+    except subprocess.CalledProcessError as pdsUerr:
+        print("Error extracting member "+memName+" from PDS "+pdsName+" on volume "+volDir+volSer)
+        print(pdsUerr.output)
+        sys.exit()
+    if os.path.exists("/tmp/"+memName):
+        infile = "/tmp/"+memName
+        rdFile = open(infile, 'r')
+        for line in rdFile:
+            if searchStr in line:
+                #print(line)
+                nxl = ''
+                metas = ['.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '\\', '|', '(', ')']
+                if replStr != 'null':
+                    for xl in replStr:
+                        if xl in metas:
+                            nxl = (nxl+"\\"+xl)
+                        else:
+                            nxl = nxl+xl
+                    subprocess.run(["sed", "-i", "s/"+searchStr+"/"+nxl+"/", "/tmp/"+memName])
+                    subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--overlay"],stderr=None,stdout=None,capture_output=False)
+        rdFile.close()
+    else:
+        print("Member extraction output file not found.. likely error extracting member from PDS")
 
 
 # Check if zPDT Emulator is running. If it is not then this isn't a failure but some automagic turns to manual labor. 

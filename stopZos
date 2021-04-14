@@ -32,9 +32,12 @@ checkZpdt()
 if zdtPyApi.zdtConf != '':
     findDmInfo(zdtPyApi.loggedUser, zdtPyApi.zdtConf)
 
+
+
 else:
     prRed("Unable to obtain zPDT configuration information, aborting")
     sys.exit()
+
 
 if zdtPyApi.zdtStat != 'up':
     prRed("zPDT Emulator is not active, z/OS is already down")
@@ -44,6 +47,7 @@ else:
     totTime = 0
     intTime = 30                      # interval, in seconds, of when to recheck if endTask is down 
     if zdtPyApi.zosIsUp == 'yes':
+        getIplInfo()
         prCyan("stopZos using task "+zdtPyApi.endTask+" to determine z/OS status")
         prCyan("stopZos will shutdown z/OS using command: "+zdtPyApi.shutCmd)
         prCyan("stopZos will timeout after: "+str(zdtPyApi.stopTime)+" seconds")

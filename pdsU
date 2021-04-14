@@ -3,7 +3,7 @@
 #
 #  pdsU is a "front-end" to the zPDT pdsUtil utility
 # 
-#  pdsU accepts three parameters 
+#  pdsU accepts six parameters 
 #  -d Volume Directory           Optional: will default to current directory
 #  -v Volume Name                Required: Volume containing the PDS to be updated
 #  -p PDS Name                   Required. PDS Name containing the Member to be updated

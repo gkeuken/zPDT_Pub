@@ -534,6 +534,7 @@ def readFile(volDir, volSer, pdsName, memName, searchStr, replStr):
         if os.path.exists(volDir+volSer):
             subprocess.run(["rm", "/tmp/"+memName])
             subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--extract"],stderr=None,stdout=None,capture_output=False)
+            subprocess.run(["cp", "/tmp/"+memName, "/tmp/"+memName+"_original"],stderr=None,stdout=None,capture_output=False)
     except subprocess.CalledProcessError as pdsUerr:
         print("Error extracting member "+memName+" from PDS "+pdsName+" on volume "+volDir+volSer)
         print(pdsUerr.output)
@@ -541,9 +542,13 @@ def readFile(volDir, volSer, pdsName, memName, searchStr, replStr):
     if os.path.exists("/tmp/"+memName):
         infile = "/tmp/"+memName
         rdFile = open(infile, 'r')
+        foundStr = ''
+        strFnd = 0
         for line in rdFile:
             if searchStr in line:
-                #print(line)
+                print("Match Found "+line)
+                foundStr = 'yes'
+                strFnd += 1
                 nxl = ''
                 metas = ['.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '\\', '|', '(', ')']
                 if replStr != 'null':
@@ -552,9 +557,14 @@ def readFile(volDir, volSer, pdsName, memName, searchStr, replStr):
                             nxl = (nxl+"\\"+xl)
                         else:
                             nxl = nxl+xl
-                    subprocess.run(["sed", "-i", "s/"+searchStr+"/"+nxl+"/", "/tmp/"+memName])
-                    subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--overlay"],stderr=None,stdout=None,capture_output=False)
         rdFile.close()
+        if foundStr == 'yes' and replStr != 'null':
+            subprocess.run(["sed", "-i", "s/"+searchStr+"/"+nxl+"/", "/tmp/"+memName])
+            subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--overlay"],stderr=None,stdout=None,capture_output=False)
+        elif foundStr == '' and replStr != 'null':
+            print("Search string "+searchStr+" not found. No replacements performed")
+        elif foundStr == 'yes' and replStr == 'null':
+            print("Search String was found: "+str(strFnd)+" Times. Replacement String was not specified so no replacements performed.") 
     else:
         print("Member extraction output file not found.. likely error extracting member from PDS")
 

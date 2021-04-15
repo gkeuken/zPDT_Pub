@@ -528,13 +528,13 @@ def makeCkdVol(volSer, newSize, progPath):
 
 
 
+# This function runs the pdsUtil zPDT utility, searches for a string and if desired replaces it with new value 
 def pdsUfile(volDir, volSer, pdsName, memName, searchStr, replStr):
     lastrc = 0
-    pdsUstr=str(pdsName+"/"+memName+" /tmp/"+memName+" --extract")
     try:
-        if os.path.exists("/tmp/"+memName):
+        if os.path.exists("/tmp/"+memName):                      #check if /tmp file exists and if so delete it
             subprocess.run(["rm", "/tmp/"+memName])
-        if memName == '' or pdsName == '' or volSer == '':
+        if memName == '' or pdsName == '' or volSer == '':       #ensure required options are specified
             raise ValueError("Invalid Parms. Member name, PDS name or volume not specfied. Check parms")
         if os.path.exists(volDir+volSer):
             pdsExtr = subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--extract"],capture_output=True)

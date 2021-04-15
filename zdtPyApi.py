@@ -529,6 +529,7 @@ def makeCkdVol(volSer, newSize, progPath):
 
 
 def pdsUfile(volDir, volSer, pdsName, memName, searchStr, replStr):
+    lastrc = 0
     pdsUstr=str(pdsName+"/"+memName+" /tmp/"+memName+" --extract")
     try:
         if os.path.exists("/tmp/"+memName):
@@ -536,15 +537,25 @@ def pdsUfile(volDir, volSer, pdsName, memName, searchStr, replStr):
         if memName == '' or pdsName == '' or volSer == '':
             raise ValueError("Invalid Parms. Member name, PDS name or volume not specfied. Check parms")
         if os.path.exists(volDir+volSer):
-            subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--extract"],stderr=None,stdout=None,capture_output=False)
-            subprocess.run(["cp", "/tmp/"+memName, "/tmp/"+memName+"_original"],stderr=None,stdout=None,capture_output=False)
+            pdsExtr = subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--extract"],capture_output=True)
+            if pdsExtr.stderr != b'':
+                print(pdsExtr.stderr)
+                print("Return Code: "+str(pdsExtr.returncode)) #typically RC 40 (no member) or 20 (no pds) here 
+                sys.exit(pdsExtr.returncode)
+                #raise ValueError(pdsExtr.stderr)
+            else:
+                subprocess.run(["cp", "/tmp/"+memName, "/tmp/"+memName+"_original"],stderr=None,stdout=None,capture_output=False)
         else:
             print("Volume not found in directory, ensure you specify -d to point to volume directory or run command from that directory")
-            raise ValueError("Volume not found")
+            lastrc = 41
+            print("Return Code: "+str(lastrc))
+            sys.exit(lastrc) #raise ValueError("Volume not found")
     except subprocess.CalledProcessError as pdsUerr:
         print("Error extracting member "+memName+" from PDS "+pdsName+" on volume "+volDir+volSer)
         print(pdsUerr.output)
-        sys.exit()
+        lastrc = 42
+        print("Return Code: "+str(lastrc))
+        sys.exit(lastrc)
     if os.path.exists("/tmp/"+memName):
         infile = "/tmp/"+memName
         rdFile = open(infile, 'r')
@@ -556,7 +567,7 @@ def pdsUfile(volDir, volSer, pdsName, memName, searchStr, replStr):
                 foundStr = 'yes'
                 strFnd += 1
                 nxl = ''
-                metas = ['.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '\\', '|', '(', ')']
+                metas = ['.', '^', '$', '&', '*', '+', '?', '{', '}', '[', ']', '\\', '|', '(', ')']
                 if replStr != 'null':
                     for xl in replStr:
                         if xl in metas:
@@ -565,18 +576,38 @@ def pdsUfile(volDir, volSer, pdsName, memName, searchStr, replStr):
                             nxl = nxl+xl
         rdFile.close()
         if foundStr == 'yes' and replStr != 'null':
-            subprocess.run(["sed", "-i", "s/"+searchStr+"/"+nxl+"/", "/tmp/"+memName])
-            subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--overlay"],stderr=None,stdout=None,capture_output=False)
+            try:
+                subprocess.run(["sed", "-i", "s/"+searchStr+"/"+nxl+"/", "/tmp/"+memName])
+                pdsOlay = subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--overlay"],capture_output=True)
+                #print(pdsOlay.stderr)
+                if pdsOlay.stderr != b'':
+                    print(pdsOlay.stderr)
+                    print("Return Code: "+str(pdsOlay.returncode))
+                    sys.exit(pdsOlay.returncode) #raise ValueError(pdsOlay.stderr)
+                else:
+                    print ("String "+searchStr+" replaced with "+replStr)
+                    print("Return Code: "+str(pdsOlay.returncode))
+            except subprocess.CalledProcessError as pdsUerr2:
+                print("Error during overlay for "+memName+" from PDS "+pdsName+" on volume "+volDir+volSer)
+                print(pdsUerr2.output)
+                lastrc = 0
         elif foundStr == '' and replStr != 'null':
             print("Search string "+searchStr+" not found in PDS member.")
             print("No updates/replacements performed")
+            lastrc = 13
         elif foundStr == 'yes' and replStr == 'null':
+            if strFnd > 1:
+                prRed("Warning .. multiple lines found matching string: "+searchStr)
             print("Search String was found: "+str(strFnd)+" Times.") 
             print("Replacement String was not specified so no updates/replacements performed.")
+            lastrc = 14
         elif foundStr == '':
             print("Search String was not found in specified member")
+            lastrc = 15
     else:
         print("Member extraction output file not found.. likely error extracting member from PDS or member not found.")
+        lastrc = 16
+    sys.exit(lastrc)
 
 
 # Check if zPDT Emulator is running. If it is not then this isn't a failure but some automagic turns to manual labor. 

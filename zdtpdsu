@@ -1,9 +1,9 @@
 #!/usr/bin/env python3 
 
 #
-#  pdsU is a "front-end" to the zPDT pdsUtil utility
+#  zdtpdsu is a "front-end" to the zPDT pdsUtil utility
 # 
-#  pdsU accepts six parameters 
+#  zdtpdsu accepts six parameters 
 #  -d Volume Directory           Optional: will default to current directory
 #  -v Volume Name                Required: Volume containing the PDS to be updated
 #  -p PDS Name                   Required. PDS Name containing the Member to be updated
@@ -22,4 +22,4 @@ readArgs()
 
 
 # Verify logged in as IBMSYS1 or ID that can execute zPDT commands
-readFile(zdtPyApi.volDir, zdtPyApi.volSer, zdtPyApi.pdsName, zdtPyApi.memName, zdtPyApi.searchStr, zdtPyApi.replStr)
+pdsUfile(zdtPyApi.volDir, zdtPyApi.volSer, zdtPyApi.pdsName, zdtPyApi.memName, zdtPyApi.searchStr, zdtPyApi.replStr)

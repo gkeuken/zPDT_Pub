@@ -123,9 +123,9 @@ def printHelp():
         print("   zdtVcreate -v TEST00 -d /z -s 27      ; Non SMS Mod 27 volume to be created in directory /z")
         print("   zdtVcreate -v TEST02 -s 27            ; nodmap   - do not update Devmap file")
         print("   zdtVcreate -v TEST02 -m -s 27         ; Just create the new file, no automatic mounting etc")
-    elif 'pdsU' in sys.argv[0]:
-        prCyan("** pdsU Input Requirements: **")
-        print("Run this utility with linux user that starts zPDT and IPLs z/OS. pdsU is really just a 'wrapper' for the pdsUtil zPDT command")
+    elif 'zdtpdsu' in sys.argv[0]:
+        prCyan("** zdtpdsu Input Requirements: **")
+        print("Run this utility with linux user that starts zPDT and IPLs z/OS. zdtpdsu is really just a 'wrapper' for the pdsUtil zPDT command")
         print(" ")
         print("-d Volume Directory           Optional: will default to current directory")
         print("-v Volume Name                Required: Volume containing the PDS to be updated")
@@ -307,8 +307,8 @@ def readArgs():
     elif 'zdtVcreate' in sys.argv[0]:
         pfunc = 'zdtVcreate'
         arglist = ['-s','-v','-d','-m','-nodmap','-sms','--help']
-    elif 'pdsU' in sys.argv[0]:
-        pfunc = 'pdsU'
+    elif 'zdtpdsu' in sys.argv[0]:
+        pfunc = 'zdtpdsu'
         arglist = ['-d','-v','-p','-q','-r','-x','--help']
     elif 'stopZos' in sys.argv[0]:
         pfunc = 'stopZos'
@@ -528,13 +528,19 @@ def makeCkdVol(volSer, newSize, progPath):
 
 
 
-def readFile(volDir, volSer, pdsName, memName, searchStr, replStr):
-    pdsUstr=str(pdsName+"/"+memName+" /tmp/"+memName+" --extract") 
+def pdsUfile(volDir, volSer, pdsName, memName, searchStr, replStr):
+    pdsUstr=str(pdsName+"/"+memName+" /tmp/"+memName+" --extract")
     try:
-        if os.path.exists(volDir+volSer):
+        if os.path.exists("/tmp/"+memName):
             subprocess.run(["rm", "/tmp/"+memName])
+        if memName == '' or pdsName == '' or volSer == '':
+            raise ValueError("Invalid Parms. Member name, PDS name or volume not specfied. Check parms")
+        if os.path.exists(volDir+volSer):
             subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--extract"],stderr=None,stdout=None,capture_output=False)
             subprocess.run(["cp", "/tmp/"+memName, "/tmp/"+memName+"_original"],stderr=None,stdout=None,capture_output=False)
+        else:
+            print("Volume not found in directory, ensure you specify -d to point to volume directory or run command from that directory")
+            raise ValueError("Volume not found")
     except subprocess.CalledProcessError as pdsUerr:
         print("Error extracting member "+memName+" from PDS "+pdsName+" on volume "+volDir+volSer)
         print(pdsUerr.output)
@@ -562,11 +568,15 @@ def readFile(volDir, volSer, pdsName, memName, searchStr, replStr):
             subprocess.run(["sed", "-i", "s/"+searchStr+"/"+nxl+"/", "/tmp/"+memName])
             subprocess.run(["pdsUtil", volDir+volSer, pdsName+"/"+memName, "/tmp/"+memName, "--overlay"],stderr=None,stdout=None,capture_output=False)
         elif foundStr == '' and replStr != 'null':
-            print("Search string "+searchStr+" not found. No replacements performed")
+            print("Search string "+searchStr+" not found in PDS member.")
+            print("No updates/replacements performed")
         elif foundStr == 'yes' and replStr == 'null':
-            print("Search String was found: "+str(strFnd)+" Times. Replacement String was not specified so no replacements performed.") 
+            print("Search String was found: "+str(strFnd)+" Times.") 
+            print("Replacement String was not specified so no updates/replacements performed.")
+        elif foundStr == '':
+            print("Search String was not found in specified member")
     else:
-        print("Member extraction output file not found.. likely error extracting member from PDS")
+        print("Member extraction output file not found.. likely error extracting member from PDS or member not found.")
 
 
 # Check if zPDT Emulator is running. If it is not then this isn't a failure but some automagic turns to manual labor. 

@@ -808,9 +808,9 @@ def sendOprMsg(oprStr, logFile, slpTime, prtOpt):
                     pass
                 else:
                     if prtOpt == 'y':
-                        print(lines.decode())
+                        print(lines.decode("utf-8",errors="ignore"))
                     else:
-                        trapMsg += lines.decode()
+                        trapMsg += lines.decode("utf-8",errors="ignore")
         if slpTime > 3 and sys.version_info[0] >= 3 and sys.version_info[1] >= 3:
                     try:
                             subprocess.run(["tail", "-f", "-n", "0", logFile], timeout=slpTime)

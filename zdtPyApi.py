@@ -33,6 +33,16 @@ def prCyan(prt):
     print("\033[96m {}\033[00m" .format(prt))
 
 
+def stopJesTasks():
+    taskword = 8
+    sendOprMsg("$DJES2", curLogFile, 1, 't')
+    for lines in trapMsg.split("$HASP608"):
+        if " STC" in lines:
+            tasknm = lines.split()[1]
+            print("Cancelling Task: "+tasknm)
+            cantask = str('CANCEL '+tasknm)
+            sendOprMsg(cantask, curLogFile, 1, 't')
+
 # Used for stopZos to check if a task is still running or not
 def chkEndTask():
     global zosIsUp 

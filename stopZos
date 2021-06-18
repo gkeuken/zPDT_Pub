@@ -64,9 +64,16 @@ else:
             else:
                 pass
         sendOprMsg(zdtPyApi.shutCmd, zdtPyApi.curLogFile, 1, 't')
+        stopFlag = 'N'
         while totTime < zdtPyApi.stopTime:
             time.sleep(intTime)
             totTime += intTime
+            if totTime > zdtPyApi.stopTime - (intTime * 3) and stopFlag != 'Y':
+                prRed(zdtPyApi.stopTime)
+                prRed(totTime)
+                prRed('Timeout is approaching, attempting cancel of remaining JES2 dependent tasks')
+                stopJesTasks()
+                stopFlag = 'Y'
             chkEndTask()
             if zdtPyApi.zosIsUp == 'no':
                 totTime = zdtPyApi.stopTime

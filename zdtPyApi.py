@@ -493,6 +493,8 @@ def getIplInfo():
         shutCmd = '%NETV SHUTSYS'
     elif "USED LOADNZ IN SYS1.IPLPARM" in trapMsg:
         shutCmd = '%NETV SHUTSYS'
+    elif "USED LOADNC IN SYS1.IPLPARM" in trapMsg:
+        shutCmd = '%NETV SHUTSYS'
     elif "USED LOADNV IN SYS1.IPLPARM" in trapMsg:
         shutCmd = '%NETV SHUTSYS'
     elif "USED LOADCS IN SYS1.IPLPARM" in trapMsg:

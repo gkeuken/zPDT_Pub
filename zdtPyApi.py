@@ -489,7 +489,7 @@ def readArgs():
 def getIplInfo():
     global shutCmd
     sendOprMsg('D IPLINFO', curLogFile, 1, 't')
-    if "USED LOADK3 IN SYS1.IPLPARM" in trapMsg:
+    if "USED LOADK2 IN SYS1.IPLPARM" in trapMsg:
         shutCmd = '%NETV SHUTSYS'
     elif "USED LOADAU IN SYS1.IPLPARM" in trapMsg:
         shutCmd = '%NETV SHUTSYS'

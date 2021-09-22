@@ -489,7 +489,9 @@ def readArgs():
 def getIplInfo():
     global shutCmd
     sendOprMsg('D IPLINFO', curLogFile, 1, 't')
-    if "USED LOADAU IN SYS1.IPLPARM" in trapMsg:
+    if "USED LOADK3 IN SYS1.IPLPARM" in trapMsg:
+        shutCmd = '%NETV SHUTSYS'
+    elif "USED LOADAU IN SYS1.IPLPARM" in trapMsg:
         shutCmd = '%NETV SHUTSYS'
     elif "USED LOADNZ IN SYS1.IPLPARM" in trapMsg:
         shutCmd = '%NETV SHUTSYS'
@@ -521,6 +523,9 @@ def getIplInfo():
         shutCmd = 'S SHUT00'
     elif "USED LOADZE IN SYS1.IPLPARM" in trapMsg:  
         shutCmd = 'S SHUTZE'
+    else 
+        prRed("Unable to shutdown this z/OS instance.. shutdown command unknown")
+        sys.exit()
       
 
 

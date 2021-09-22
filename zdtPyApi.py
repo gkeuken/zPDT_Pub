@@ -498,43 +498,44 @@ def readArgs():
 def getIplInfo():
     global shutCmd, IPL_Dev, IODF_Dev, LD_Parm
     sendOprMsg('D IPLINFO', curLogFile, 1, 't')
-    if "USED LOADK2 IN SYS1.IPLPARM" in trapMsg:
-        shutCmd = '%NETV SHUTSYS'
-    elif "USED LOADAU IN SYS1.IPLPARM" in trapMsg:
-        shutCmd = '%NETV SHUTSYS'
-    elif "USED LOADNZ IN SYS1.IPLPARM" in trapMsg:
-        shutCmd = '%NETV SHUTSYS'
-    elif "USED LOADNC IN SYS1.IPLPARM" in trapMsg:
-        shutCmd = '%NETV SHUTSYS'
-    elif "USED LOADNV IN SYS1.IPLPARM" in trapMsg:
-        shutCmd = '%NETV SHUTSYS'
-    elif "USED LOADCS IN SYS1.IPLPARM" in trapMsg:
-        shutCmd = 'S SHUTCS'
-    elif "USED LOADAL IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTALL'
-    elif "USED LOADDB IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTDB'
-    elif "USED LOADCI IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTCI'
-    elif "USED LOADIM IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTIM'
-    elif "USED LOADIZ IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTIZ'
-    elif "USED LOADWA IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTWA'
-    elif "USED LOADDC IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTDC'
-    elif "USED LOADDW IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTALL'
-    elif "USED LOADWS IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTCS'
-    elif "USED LOAD00 IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUT00'
-    elif "USED LOADZE IN SYS1.IPLPARM" in trapMsg:  
-        shutCmd = 'S SHUTZE'
-    else: 
-        prRed("Unable to shutdown this z/OS instance.. shutdown command unknown")
-        sys.exit()
+    if shutCmd == 'NULL':
+        if "USED LOADK2 IN SYS1.IPLPARM" in trapMsg:
+            shutCmd = '%NETV SHUTSYS'
+        elif "USED LOADAU IN SYS1.IPLPARM" in trapMsg:
+            shutCmd = '%NETV SHUTSYS'
+        elif "USED LOADNZ IN SYS1.IPLPARM" in trapMsg:
+            shutCmd = '%NETV SHUTSYS'
+        elif "USED LOADNC IN SYS1.IPLPARM" in trapMsg:
+            shutCmd = '%NETV SHUTSYS'
+        elif "USED LOADNV IN SYS1.IPLPARM" in trapMsg:
+            shutCmd = '%NETV SHUTSYS'
+        elif "USED LOADCS IN SYS1.IPLPARM" in trapMsg:
+            shutCmd = 'S SHUTCS'
+        elif "USED LOADAL IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTALL'
+        elif "USED LOADDB IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTDB'
+        elif "USED LOADCI IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTCI'
+        elif "USED LOADIM IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTIM'
+        elif "USED LOADIZ IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTIZ'
+        elif "USED LOADWA IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTWA'
+        elif "USED LOADDC IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTDC'
+        elif "USED LOADDW IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTALL'
+        elif "USED LOADWS IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTCS'
+        elif "USED LOAD00 IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUT00'
+        elif "USED LOADZE IN SYS1.IPLPARM" in trapMsg:  
+            shutCmd = 'S SHUTZE'
+        else: 
+            prRed("Unable to shutdown this z/OS instance.. shutdown command unknown")
+            sys.exit()
     for lines in trapMsg.split("OPRMSG:"):
         if "USED LOAD" in lines:
             get_LD_Parm = lines.split()[1]

@@ -81,14 +81,24 @@ else:
                 if zdtPyApi.awsstop == 'Y':
                     prRed("Issuing zPDT awsstop")
                     subprocess.call(["awsstop"])
+                else:
+                    if zdtPyApi.reipl == 'Y':
+                        prRed("Re-IPL starting using IPL string: ipl "+zdtPyApi.IPL_Dev+" parm "+zdtPyApi.IODF_Dev+zdtPyApi.LD_Parm)
+                        subprocess.run(["ipl", zdtPyApi.IPL_Dev, "parm", zdtPyApi.IODF_Dev+zdtPyApi.LD_Parm]) 
         if zdtPyApi.zosIsUp == 'yes':
             prRed("stopZos has timed out waiting for z/OS to end. Specified end Task "+zdtPyApi.endTask+" did not end in specified timeout perios")
-            if zdtPyApi.awsstop == 'Y':
-                prRed("Issuing zPDT awsstop")
-                subprocess.call(["awsstop"])
+            if zdtPyApi.reipl == 'Y':
+                prRed("Re-IPL starting using IPL string: ipl "+zdtPyApi.IPL_Dev+" parm "+zdtPyApi.IODF_Dev+zdtPyApi.LD_Parm)
+                subprocess.run(["ipl", zdtPyApi.IPL_Dev, "parm", zdtPyApi.IODF_Dev+zdtPyApi.LD_Parm]) 
+            else:
+                if zdtPyApi.awsstop == 'Y':
+                    prRed("Issuing zPDT awsstop")
+                    subprocess.call(["awsstop"])
 
     else:
         prRed("z/OS already appears to be down, "+zdtPyApi.endTask+" was not found")
+        if zdtPyApi.reipl == 'Y':
+            prRed("Re-IPL not possible, current IPL string unknown")
         if zdtPyApi.awsstop == 'Y':
             prRed("Issuing zPDT awsstop")
             subprocess.call(["awsstop"])

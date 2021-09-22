@@ -322,7 +322,7 @@ def readArgs():
         arglist = ['-d','-v','-p','-q','-r','-x','--help']
     elif 'stopZos' in sys.argv[0]:
         pfunc = 'stopZos'
-        arglist = ['-c','-z','-t','-awsstop','-noverify','--help']
+        arglist = ['-c','-z','-t','-awsstop','-reipl','-noverify','--help']
     else:
         pfunc = 'zdtmsg'
         arglist = ['-w','--help']
@@ -331,7 +331,7 @@ def readArgs():
         printHelp()
         sys.exit()
     size_list = ['1','3','9','27','54']
-    global stopTime, shutCmd, endTask, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp, awsstop, noverify, pdsName, memName, searchStr, replStr
+    global stopTime, shutCmd, endTask, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp, awsstop, noverify, pdsName, memName, searchStr, replStr, reipl
     progPath = os.path.realpath(__file__).strip('zdtPyApi.py')
     progPath = os.path.realpath(__file__).strip('zdtPyApi.pyc')
     try:
@@ -342,6 +342,9 @@ def readArgs():
         subJcl = ''
         volSer = ''
         inVol = ''
+        LD_Parm = 'K2'
+        IPL_Dev = '0a80'
+        IODF_Dev = '0a82'
         autoMnt = 'y'
         stopTime = 480
         shutCmd = 'null'
@@ -349,6 +352,7 @@ def readArgs():
         memName = ''
         searchStr = ''
         replStr = 'null'
+        reipl = 'N'
         awsstop = 'no'
         noverify = 'N'
         endTask = 'JES2'
@@ -360,7 +364,7 @@ def readArgs():
         zosSSHPort = 22
         #volDir = '/home/ibmsys1/zdt/volumes/'
         volDir = os.getcwd()+'/'
-        
+       
         while x < arg_len:
             x += 1
             if sys.argv[x] not in arglist:
@@ -392,6 +396,8 @@ def readArgs():
 
             elif sys.argv[x] == '-noverify':
                 noverify = 'Y'
+            elif sys.argv[x] == '-reipl':
+                reipl = 'Y'
             elif sys.argv[x] == '-awsstop':
                 awsstop = 'Y'
             elif sys.argv[x] == '-sms':
@@ -450,7 +456,10 @@ def readArgs():
                 if valVol == None:
                     prCyan("If volume name contains a $, place volume in single quotes")
                     raise ValueError('Volume contains invalid characters/symbols. May contain only 0-9, A-Z, @,#,or $') 
-                    
+
+        if 'stopZos' in sys.argv[0] and reipl == 'Y' and awsstop == 'Y':
+            raise ValueError('-awsstop and -reipl are mutually exclusive') 
+           
         #if not os.path.exists(volDir) and pfunc != 'zdtmsg':
         if not os.path.exists(volDir+inVol) and pfunc != 'zdtmsg' and pfunc != 'zdtVcreate':
             raise ValueError('Volume not found in current working directory or directory specified, switch to correct directory or use appropriate -d option')       
@@ -487,7 +496,7 @@ def readArgs():
 
 
 def getIplInfo():
-    global shutCmd
+    global shutCmd, IPL_Dev, IODF_Dev, LD_Parm
     sendOprMsg('D IPLINFO', curLogFile, 1, 't')
     if "USED LOADK2 IN SYS1.IPLPARM" in trapMsg:
         shutCmd = '%NETV SHUTSYS'
@@ -526,9 +535,20 @@ def getIplInfo():
     else: 
         prRed("Unable to shutdown this z/OS instance.. shutdown command unknown")
         sys.exit()
-      
-
-
+    for lines in trapMsg.split("OPRMSG:"):
+        if "USED LOAD" in lines:
+            get_LD_Parm = lines.split()[1]
+            LD_Parm = get_LD_Parm[4:7] 
+        if "IODF DEVICE: ORIGINAL" in lines:
+            get_IODF_Dev = lines.split()[2]
+            IODF_Dev = get_IODF_Dev[10:14]
+        if "IPL DEVICE: ORIGINAL" in lines:
+            get_IPL_Dev = lines.split()[2]
+            IPL_Dev = get_IPL_Dev[10:14]
+    prRed("Current IPL Information")
+    prRed("Load Parm:   "+LD_Parm)
+    prRed("IPL Device:  "+IPL_Dev)
+    prRed("IODF Device: "+IODF_Dev)
 
 #Make CKD File for zdtVcreate. Ensure you are not trying to create something that already exists. 
 def makeCkdVol(volSer, newSize, progPath):

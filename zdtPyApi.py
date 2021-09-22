@@ -523,7 +523,7 @@ def getIplInfo():
         shutCmd = 'S SHUT00'
     elif "USED LOADZE IN SYS1.IPLPARM" in trapMsg:  
         shutCmd = 'S SHUTZE'
-    else 
+    else: 
         prRed("Unable to shutdown this z/OS instance.. shutdown command unknown")
         sys.exit()
       

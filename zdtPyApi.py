@@ -449,13 +449,13 @@ def readArgs():
                 volSer = sys.argv[x+1]
                 x += 1
                 volLen = len(volSer)
-                if volLen != 6:
+                if volLen < 1:
                     prCyan("If volume name contains a $, place volume in single quotes")
                     raise ValueError('Volume Length Invalid. Must be length = 6 but found only to be length = '+str(volLen))
                 valVol = re.match(r"^[A-Z0-9@#$']",volSer)
                 if valVol == None:
                     prCyan("If volume name contains a $, place volume in single quotes")
-                    raise ValueError('Volume contains invalid characters/symbols. May contain only 0-9, A-Z, @,#,or $') 
+                    raise ValueError('Volume contains invalid characters/symbols.Check Case (upper only). May contain only 0-9, A-Z, @,#,or $') 
 
         if 'stopZos' in sys.argv[0] and reipl == 'Y' and awsstop == 'Y':
             raise ValueError('-awsstop and -reipl are mutually exclusive') 

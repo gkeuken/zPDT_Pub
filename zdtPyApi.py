@@ -18,7 +18,7 @@ import re
 import socket
 from subprocess import PIPE
 from time import gmtime, strftime
-
+from os.path import expanduser
 
 
 
@@ -793,19 +793,21 @@ def findDmInfo(loggedUser, zdtConf):
                 prtDir = prtDir+'/'
 
     if curLogFile == '':
+        curHome = os.path.expanduser('~')
         try:
-            if os.path.exists('/home/'+loggedUser+'/z1090/logs'): 
-                consLogs = subprocess.check_output(["ls", "-lt", "/home/"+loggedUser+"/z1090/logs/"])
+            if os.path.exists(curHome+'/z1090/logs'):
+                consLogs = subprocess.check_output(["ls", "-lt", curHome+"/z1090/logs/"])
                 for line in consLogs.splitlines():
                     if b'log_console' in line:
                         for words in line.split():
                             if b'log_console' in words:
-                                curLogFile = b'/home/'+loggedUser.encode()+b'/z1090/logs/'+words
+                                curLogFile = curHome.encode()+b'/z1090/logs/'+words
                         break
-                    
+
             else:
                 prRed("Cannot find current log directory")
                 raise
+
 
         except:
             print(OSError)

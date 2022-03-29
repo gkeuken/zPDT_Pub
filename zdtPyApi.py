@@ -449,7 +449,7 @@ def readArgs():
                 volSer = sys.argv[x+1]
                 x += 1
                 volLen = len(volSer)
-                if volLen < 1:
+                if volLen < 6:
                     prCyan("If volume name contains a $, place volume in single quotes")
                     raise ValueError('Volume Length Invalid. Must be length = 6 but found only to be length = '+str(volLen))
                 valVol = re.match(r"^[A-Z0-9@#$']",volSer)

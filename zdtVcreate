@@ -65,7 +65,7 @@ if zdtPyApi.zdtConf != '':
 volser = zdtPyApi.volSer
 voldir = zdtPyApi.volDir
 newSize = zdtPyApi.newSize
-hexVol = volser.encode('cp037')
+hexVol = f"{volser:<6}".encode('cp037')
 
 
 #if zdtPyApi.upDmap == 'y' and zdtPyApi.zdtStat == 'up':

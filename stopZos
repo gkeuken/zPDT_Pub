@@ -5,7 +5,8 @@
 # 
 #  stopzos accepts three parameters 
 #  -c command name - z/OS console command to initiate system shutdown (default is '%netv shutsys' which works on ZD&T ADCD)
-#  -z taskname     - task to monitor to determine if z/OS is completely down (default is JES2)
+#  -z taskname     - task to monitor to determine if z/OS is completely down, this option is mutually exclusive with -m 
+#  -m message      - message to wait for to signify z/OS is completely down, this option is mutually exclusive with -z
 #  -t timeout      - time to wait for shutdown to complete (default is 300 seconds, 5 minutes)
 #  -awsstop        - if specified then after timeout or z/OS is down then command awsstop is executed
 #  -noverify       - if specified then issue no prompts to confirm/abort
@@ -27,7 +28,6 @@ getLoggedUser()
 # Lets get the status of zPDT Emulator and z/OS
 checkZpdt()
 
-
 #get Devmap Information
 if zdtPyApi.zdtConf != '':
     findDmInfo(zdtPyApi.loggedUser, zdtPyApi.zdtConf)
@@ -43,12 +43,21 @@ if zdtPyApi.zdtStat != 'up':
     prRed("zPDT Emulator is not active, z/OS is already down")
 
 else:
-    chkEndTask()
+    if zdtPyApi.endTask:
+        chkEndTask()
+    if zdtPyApi.endMessage:
+        file_stats = os.stat(zdtPyApi.curLogFile)
+        logLen = file_stats.st_size
+        print('Existing Log length: '+str(logLen))
+        chkEndMsg(logLen)
     totTime = 0
     intTime = 30                      # interval, in seconds, of when to recheck if endTask is down 
     if zdtPyApi.zosIsUp == 'yes':
         getIplInfo()
-        prCyan("stopZos using task "+zdtPyApi.endTask+" to determine z/OS status")
+        if zdtPyApi.endTask:
+            prCyan("stopZos using task "+zdtPyApi.endTask+" to determine z/OS status")
+        if zdtPyApi.endMessage:
+            prCyan("stopZos using Message "+zdtPyApi.endMessage+" to determine z/OS status")
         prCyan("stopZos will shutdown z/OS using command: "+zdtPyApi.shutCmd)
         prCyan("stopZos will timeout after: "+str(zdtPyApi.stopTime)+" seconds")
         if zdtPyApi.awsstop == 'Y':
@@ -74,10 +83,16 @@ else:
                 prRed('Timeout is approaching, attempting cancel of remaining JES2 dependent tasks')
                 stopJesTasks()
                 stopFlag = 'Y'
-            chkEndTask()
+            if zdtPyApi.endTask:    
+                chkEndTask()
+            if zdtPyApi.endMessage:
+                chkEndMsg(zdtPyApi.logSeek)
             if zdtPyApi.zosIsUp == 'no':
                 totTime = zdtPyApi.stopTime
-                prCyan("z/OS now considered down, task "+zdtPyApi.endTask+" has ended")
+                if zdtPyApi.endTask:
+                    prCyan("z/OS now considered down, task "+zdtPyApi.endTask+" has ended")
+                if zdtPyApi.endMessage:
+                    prCyan("z/OS now considered down, message "+zdtPyApi.endMessage+" has been observed in the Log")
                 if zdtPyApi.awsstop == 'Y':
                     prRed("Issuing zPDT awsstop")
                     subprocess.call(["awsstop"])
@@ -86,7 +101,7 @@ else:
                         prRed("Re-IPL starting using IPL string: ipl "+zdtPyApi.IPL_Dev+" parm "+zdtPyApi.IODF_Dev+zdtPyApi.LD_Parm)
                         subprocess.run(["ipl", zdtPyApi.IPL_Dev, "parm", zdtPyApi.IODF_Dev+zdtPyApi.LD_Parm]) 
         if zdtPyApi.zosIsUp == 'yes':
-            prRed("stopZos has timed out waiting for z/OS to end. Specified end Task "+zdtPyApi.endTask+" did not end in specified timeout perios")
+            prRed("stopZos has timed out waiting for z/OS to end. Specified end Task did not end or end Message did not appear in log in specified timeout period")
             if zdtPyApi.reipl == 'Y':
                 prRed("Re-IPL starting using IPL string: ipl "+zdtPyApi.IPL_Dev+" parm "+zdtPyApi.IODF_Dev+zdtPyApi.LD_Parm)
                 subprocess.run(["ipl", zdtPyApi.IPL_Dev, "parm", zdtPyApi.IODF_Dev+zdtPyApi.LD_Parm]) 
@@ -96,7 +111,7 @@ else:
                     subprocess.call(["awsstop"])
 
     else:
-        prRed("z/OS already appears to be down, "+zdtPyApi.endTask+" was not found")
+        prRed("z/OS already appears to be down, specified end task "+zdtPyApi.endTask+" was not found or end message has been observed in console log: "+zdtPyApi.endMessage)
         if zdtPyApi.reipl == 'Y':
             prRed("Re-IPL not possible, current IPL string unknown")
         if zdtPyApi.awsstop == 'Y':

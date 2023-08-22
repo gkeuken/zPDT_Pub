@@ -43,7 +43,25 @@ def stopJesTasks():
             cantask = str('CANCEL '+tasknm)
             sendOprMsg(cantask, curLogFile, 1, 't')
 
-# Used for stopZos to check if a task is still running or not
+# Used for stopZos to check if z/OS is still up, based on Message
+def chkEndMsg(intLogSeek):
+    global zosIsUp, logSeek 
+    foundMsg = 'no'
+    zosIsUp = 'yes'
+    logSeek = intLogSeek
+    with open(curLogFile, "rb") as iplLog:
+        iplLog.seek(logSeek)
+        readBytes = iplLog.read(1024)
+        while readBytes != b'' and foundMsg == 'no':
+            logSeek+=len(readBytes)-500   #back up a litle just in case 
+            print("checking for "+str(endMessage)+" in file: "+str(curLogFile)+" from byte: " +str(logSeek-1524)+" to  byte: "+str(logSeek))
+            if endMessage in str(readBytes): 
+                foundMsg = 'yes'
+                zosIsUp = 'no'
+            readBytes = iplLog.read(1024)    
+
+
+# Used for stopZos to check if a task is still running or not, based on Task name
 def chkEndTask():
     global zosIsUp 
     chkStat = str('d a,'+endTask)
@@ -106,9 +124,12 @@ def printHelp():
     elif 'stopZos' in sys.argv[0]:
         prCyan("** stopZos Input Requirements: **")
         print("Run this utility with linux user that starts zPDT and IPLs z/OS")
+        print("At least one of -g or -z should be specified, but NOT BOTH.")
+        print(" ")
         print(" ")
         print("-c z/OS Shutdown Command      Optional: The z/OS Console command to shutdown z/OS. Default is %netv shutsys, which only works for ADCD")
-        print("-z Final z/OS Subsystem       Optional: Task to check to ensure z/OS is completely down. Default is JES2")
+        print("-z Final z/OS Subsystem       Optional: Task to check to ensure z/OS is completely down. Mutually exclusive with -g")
+        print("-g Final z/OS Message         Optional: Message to check for to signify that z/OS is completely down. Mutually exclusive with -z")
         print("-t Timeout (seconds)          Optional. Default is 300 Seconds.")
         print("-awsstop                      Optional. If specified then zPDT command awsstop will be executed after timeout or after z/OS is down.")
 
@@ -322,16 +343,17 @@ def readArgs():
         arglist = ['-d','-v','-p','-q','-r','-x','--help']
     elif 'stopZos' in sys.argv[0]:
         pfunc = 'stopZos'
-        arglist = ['-c','-z','-t','-awsstop','-reipl','-noverify','--help']
+        arglist = ['-c','-z','-g','-t','-awsstop','-reipl','-noverify','--help']
     else:
         pfunc = 'zdtmsg'
         arglist = ['-w','--help']
     arg_len = len(sys.argv)
-    if arg_len < 2 and 'stopZos' not in sys.argv[0]:
+#    if arg_len < 2 and 'stopZos' not in sys.argv[0]:
+    if arg_len < 2:
         printHelp()
         sys.exit()
     size_list = ['1','3','9','27','54']
-    global stopTime, shutCmd, endTask, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp, awsstop, noverify, pdsName, memName, searchStr, replStr, reipl
+    global stopTime, shutCmd, endTask, endMessage, progPath, subJcl, newSize, volSer, smsFlag, inVol, autoMnt, inUid, volDir, upDmap, slpTime, sshSub, zosIp, awsstop, noverify, pdsName, memName, searchStr, replStr, reipl
     progPath = os.path.realpath(__file__).strip('zdtPyApi.py')
     progPath = os.path.realpath(__file__).strip('zdtPyApi.pyc')
     try:
@@ -355,7 +377,8 @@ def readArgs():
         reipl = 'N'
         awsstop = 'no'
         noverify = 'N'
-        endTask = 'JES2'
+        endMessage = ''
+        endTask = ''
         upDmap = 'y'
         newSize = '1'
         inUid = 'IBMUSER'
@@ -368,7 +391,7 @@ def readArgs():
         while x < arg_len:
             x += 1
             if sys.argv[x] not in arglist:
-                if 'stopZos' in sys.argv[0] and x == 0:
+                if 'stopZos' in sys.argv[0] and x == 1:
                     pass
                 elif 'zdtmsg' in sys.argv[0] and x == 1:
                     pass
@@ -384,6 +407,9 @@ def readArgs():
                 x += 1
             elif sys.argv[x] == '-z':
                 endTask = sys.argv[x+1].upper()
+                x += 1
+            elif sys.argv[x] == '-g':
+                endMessage = sys.argv[x+1].upper()
                 x += 1
             elif sys.argv[x] == '-t':
                 stopTime = int(sys.argv[x+1])
@@ -459,7 +485,8 @@ def readArgs():
 
         if 'stopZos' in sys.argv[0] and reipl == 'Y' and awsstop == 'Y':
             raise ValueError('-awsstop and -reipl are mutually exclusive') 
-           
+        if 'stopZos' in sys.argv[0] and endMessage and endTask:
+            raise ValueError('-g and -z options are mutually exclusive')
         #if not os.path.exists(volDir) and pfunc != 'zdtmsg':
         if not os.path.exists(volDir+inVol) and pfunc != 'zdtmsg' and pfunc != 'zdtVcreate':
             raise ValueError('Volume not found in current working directory or directory specified, switch to correct directory or use appropriate -d option')       

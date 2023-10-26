@@ -487,6 +487,8 @@ def readArgs():
             raise ValueError('-awsstop and -reipl are mutually exclusive') 
         if 'stopZos' in sys.argv[0] and endMessage and endTask:
             raise ValueError('-g and -z options are mutually exclusive')
+        if 'stopZos' in sys.argv[0] and not endMessage and not endTask:
+            raise ValueError('at least one of -g and -z options are required')
         #if not os.path.exists(volDir) and pfunc != 'zdtmsg':
         if not os.path.exists(volDir+inVol) and pfunc != 'zdtmsg' and pfunc != 'zdtVcreate':
             raise ValueError('Volume not found in current working directory or directory specified, switch to correct directory or use appropriate -d option')       

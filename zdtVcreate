@@ -155,11 +155,11 @@ try:
         updateRec(hexVol)
         
     elif newSize == '27':
-        f.seek(5253907,0)
+        f.seek(9459475,0)
         updateRec(hexVol)
         
     else:
-        f.seek(7047859,0)
+        f.seek(9548467,0)
         updateRec(hexVol)
         
 

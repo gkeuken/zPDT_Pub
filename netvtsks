@@ -15,7 +15,7 @@ def getcfgvol():
     global cfgVol
     spout = subprocess.run(['awsstat'], stdout=subprocess.PIPE)
     for line in spout.stdout.splitlines():
-        if (b"CFG1" in line):
+        if (b"USR1" in line) or (b"USRVS1" in line):
             cfgVol = line.split()[5].decode()
             getCfgdir()
             if (cfgVol[0] != '/'):
@@ -41,7 +41,7 @@ def getCfgdir():
 
 def getnetv_globals():
     try:
-        subprocess.run(["pdsUtil", cfgVol, "NETVIEW.CNM01.CNMCLST/GLBCNM01", newCfgdir+"GLBCNM01.txt", "--extract"],stdout=PIPE,check=True)
+        subprocess.run(["pdsUtil", cfgVol, "NETVIEW.V6R4USER.CNM01.CNMCLST/GLBCNM01", newCfgdir+"GLBCNM01.txt", "--extract"],stdout=PIPE,check=True)
     except subprocess.CalledProcessError as err:
         print(err)
         print("Unable to obtain Netview Globals configuration file, not able to continue")

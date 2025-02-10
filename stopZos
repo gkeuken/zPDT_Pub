@@ -32,15 +32,15 @@ checkZpdt()
 if zdtPyApi.zdtConf != '':
     findDmInfo(zdtPyApi.loggedUser, zdtPyApi.zdtConf)
 
-
-
 else:
     prRed("Unable to obtain zPDT configuration information, aborting")
     sys.exit()
 
+# Lets see if z/OS is responding
+checkZosInfo()
 
-if zdtPyApi.zdtStat != 'up':
-    prRed("zPDT Emulator is not active, z/OS is already down")
+if zdtPyApi.zdtStat != 'up' or zdtPyApi.zosIsUp == 'no':
+    prRed("zPDT Emulator is not active, or z/OS is already down")
 
 else:
     if zdtPyApi.endTask:

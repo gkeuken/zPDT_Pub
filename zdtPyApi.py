@@ -60,6 +60,14 @@ def chkEndMsg(intLogSeek):
                 zosIsUp = 'no'
             readBytes = iplLog.read(1024)    
 
+def checkZosInfo():
+    global zosIsUp 
+    chkStat = str('d iplinfo')
+    zosIsUp = 'yes'
+    sendOprMsg(chkStat, curLogFile, slpTime, 't')
+    for lines in trapMsg.splitlines():
+        if "SYSTEM IPLED AT" not in lines:
+            zosIsUp = 'no'
 
 # Used for stopZos to check if a task is still running or not, based on Task name
 def chkEndTask():
